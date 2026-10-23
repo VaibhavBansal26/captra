@@ -63,6 +63,7 @@ export default defineApp({
 ## Packages
 
 - `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests
+- `@captra/client` — typed HTTP client and live event streaming
 - `@captra/react` — hooks and safe capability-view rendering
 - `@captra/server` — Web Standard backend handler
 - `@captra/cli` — create, dev, build, test, and inspect commands

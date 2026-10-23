@@ -6,5 +6,7 @@
   "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/server" },
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "peerDependencies": { "@captra/core": "^0.1.0" }
+  "peerDependencies": { "@captra/core": "^0.1.0" },
+  "scripts": { "test": "vitest run" },
+  "devDependencies": { "vitest": "^4.0.4", "zod": "^4.1.12" }
 }

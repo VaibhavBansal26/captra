@@ -11,7 +11,7 @@
   "type": "module",
   "workspaces": ["packages/*", "examples/*"],
   "scripts": {
-    "test": "npm run test -w @captra/core",
+    "test": "npm run test -w @captra/core && npm run test -w @captra/server",
     "build": "npm run build -w @captra/customer-ops",
     "dev": "npm run dev -w @captra/customer-ops",
     "inspect": "node packages/cli/bin/captra.js inspect examples/customer-ops"

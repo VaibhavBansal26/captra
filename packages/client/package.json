@@ -1,0 +1,10 @@
+{
+  "name": "@captra/client",
+  "version": "0.1.0",
+  "description": "HTTP and streaming client for Captra runtimes.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/client" },
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "peerDependencies": { "@captra/core": "^0.1.0" }
+}

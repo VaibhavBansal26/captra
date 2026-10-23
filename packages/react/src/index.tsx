@@ -33,6 +33,15 @@ export function useCapability(app:AgentApp,name:string,options:UseCaptraOptions=
   return {...state,run:useCallback((input:unknown)=>state.run(name,input),[state.run,name])}
 }
 
+export type RemoteCaptraClient={execute:(name:string,input:unknown)=>Promise<CapabilityResult>;approve:(id:string)=>Promise<CapabilityResult>;reject:(id:string)=>Promise<CapabilityResult>}
+export function useRemoteCapability(client:RemoteCaptraClient,name:string){
+  const [result,setResult]=useState<CapabilityResult|null>(null),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null)
+  const run=useCallback(async(input:unknown)=>{setPending(true);setError(null);try{const next=await client.execute(name,input);setResult(next);return next}catch(caught){setError(caught instanceof Error?caught.message:'Unknown runtime error');return null}finally{setPending(false)}},[client,name])
+  const approve=useCallback(async()=>{if(!result)return null;const next=await client.approve(result.run.id);setResult(next);return next},[client,result])
+  const reject=useCallback(async()=>{if(!result)return null;const next=await client.reject(result.run.id);setResult(next);return next},[client,result])
+  return {run,approve,reject,result,pending,error}
+}
+
 export const useCaptra = useAgentApp
 
 export function CapabilityOutput({ result }: { result: CapabilityResult }) {
