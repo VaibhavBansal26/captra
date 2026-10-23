@@ -1,0 +1,10 @@
+{
+  "name": "@captra/react",
+  "version": "0.1.0",
+  "description": "React hooks and safe capability views for Captra.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/react" },
+  "type": "module",
+  "exports": { ".": "./src/index.tsx" },
+  "peerDependencies": { "@captra/core": "^0.1.0", "react": ">=18" }
+}

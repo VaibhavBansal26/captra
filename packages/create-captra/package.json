@@ -1,0 +1,6 @@
+{
+  "name": "create-captra",
+  "version": "0.1.0",
+  "type": "module",
+  "bin": { "create-captra": "../cli/bin/captra.js" }
+}

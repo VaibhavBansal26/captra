@@ -1,0 +1,9 @@
+{
+  "name": "@captra/cli",
+  "version": "0.1.0",
+  "description": "Create, inspect, develop, test, and build Captra applications.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/cli" },
+  "type": "module",
+  "bin": { "captra": "./bin/captra.js" }
+}

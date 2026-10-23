@@ -1,0 +1,20 @@
+{
+  "name": "captra",
+  "private": true,
+  "version": "0.1.0",
+  "description": "The capability-first framework for type-safe, memory-aware agentic applications.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git"
+  },
+  "type": "module",
+  "workspaces": ["packages/*", "examples/*"],
+  "scripts": {
+    "test": "npm run test -w @captra/core",
+    "build": "npm run build -w @captra/customer-ops",
+    "dev": "npm run dev -w @captra/customer-ops",
+    "inspect": "node packages/cli/bin/captra.js inspect examples/customer-ops"
+  },
+  "engines": { "node": ">=20" }
+}
