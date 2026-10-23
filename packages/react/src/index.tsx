@@ -1,14 +1,9 @@
 import { createElement, useCallback, useMemo, useState, type ComponentType } from 'react'
-import { createRuntime, MemoryStore, type AgentApp, type CapabilityResult } from '@captra/core'
+import { createRuntime, MemoryStore, type AgentApp, type CapabilityResult, type ExecutionIdentity, type RuntimeOptions } from '@captra/core'
 
-const demoMemory = new MemoryStore([
-  { id: 'mem_1', scope: 'user', ownerId: 'alex', type: 'preference', content: 'Prefers concise explanations', confidence: .94, createdAt: Date.now() },
-  { id: 'mem_2', scope: 'project', ownerId: 'support', type: 'decision', content: 'Refunds above $25 require approval', confidence: 1, createdAt: Date.now() },
-  { id: 'mem_3', scope: 'task', ownerId: 'current', type: 'working-state', content: 'Investigating duplicate invoice inv_2048', confidence: .88, createdAt: Date.now() },
-])
-
-export function useAgentApp(app: AgentApp) {
-  const runtime = useMemo(() => createRuntime(app, demoMemory), [app])
+export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approve?:(result:CapabilityResult)=>Promise<boolean>}
+export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
+  const runtime = useMemo(() => createRuntime(app, options), [app, options.memory, options.runs, options.authorize, options.signal])
   const [result, setResult] = useState<CapabilityResult | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -17,11 +12,9 @@ export function useAgentApp(app: AgentApp) {
     setPending(true)
     setError(null)
     try {
-      const next = await runtime.run(capability, input, {
-        userId: 'alex',
-        projectId: 'support',
-        approve: async () => true,
-      })
+      const identity=options.identity??{tenantId:'default',userId:'anonymous',projectId:'default'}
+      let next=await runtime.execute({capability,input,identity})
+      if(next.run.status==='waiting_for_approval'&&options.approve)next=await runtime.approve(next.run.id,(await options.approve(next))?'approved':'rejected')
       setResult(next)
       return next
     } catch (caught) {
@@ -30,9 +23,14 @@ export function useAgentApp(app: AgentApp) {
     } finally {
       setPending(false)
     }
-  }, [runtime])
+  }, [runtime, options.identity, options.approve])
 
   return { runtime, result, pending, error, run }
+}
+
+export function useCapability(app:AgentApp,name:string,options:UseCaptraOptions={}){
+  const state=useAgentApp(app,options)
+  return {...state,run:useCallback((input:unknown)=>state.run(name,input),[state.run,name])}
 }
 
 export const useCaptra = useAgentApp

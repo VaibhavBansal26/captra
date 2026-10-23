@@ -10,6 +10,8 @@ export function createCaptraHandler(runtime:Runtime,options:{auth:AuthResolver})
       if(request.method==='POST'&&path.endsWith('/runs')){const body=await request.json() as {capability:string;input:unknown;idempotencyKey?:string};return json(await runtime.execute({...body,identity}),202)}
       const approval=path.match(/\/runs\/([^/]+)\/(approve|reject)$/)
       if(request.method==='POST'&&approval)return json(await runtime.approve(approval[1],approval[2]==='approve'?'approved':'rejected'))
+      const cancellation=path.match(/\/runs\/([^/]+)\/cancel$/)
+      if(request.method==='POST'&&cancellation)return json(await runtime.cancel(cancellation[1]))
       const events=path.match(/\/runs\/([^/]+)\/events$/)
       if(request.method==='GET'&&events)return json(await runtime.runs.events(events[1],Number(url.searchParams.get('after')??0)))
       const run=path.match(/\/runs\/([^/]+)$/)
