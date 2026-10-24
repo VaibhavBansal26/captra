@@ -156,6 +156,22 @@ enforceEvaluation(report,{minPassRate:.95,maxFailures:2})
 `recordModel()` captures provider-neutral model interactions. `replayModel()` returns those responses deterministically during tests, eliminating API cost and model variance from regression suites.
 Use `createOpenTelemetryAdapter(tracer,meter)` to export the same signals through an existing OpenTelemetry SDK and exporter.
 
+## Lifecycle hooks
+
+Hooks compose in middleware order: `before*` hooks run in declaration order and `after*` hooks unwind in reverse order. They can transform capability input/output, filter recalled memory, wrap tool input/output, enforce approval policy, observe events, and record capability or tool failures.
+
+```ts
+const governance=defineHook({
+  name:'governance',
+  afterMemoryRecall:records=>records.filter(record=>record.confidence>=.8),
+  beforeTool:(name,input,ctx)=>redact(name,input,ctx),
+  beforeApproval:({run,decision})=>policy.assertAllowed(run,decision),
+  onEvent:event=>audit.write(event),
+})
+```
+
+Transform and policy hooks fail closed. Observer hooks (`onEvent`, `onError`, and `onToolError`) are failure-isolated and increment `captra.hook.failures` instead of changing the run outcome.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract
