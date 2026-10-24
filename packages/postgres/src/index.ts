@@ -61,15 +61,29 @@ export class PostgresWorkQueue implements WorkQueue{
 export class PostgresSharedStateAdapter implements SharedStateAdapter{
   constructor(readonly client:SqlClient,readonly tenantId:string){if(!tenantId)throw new Error('Postgres shared state requires tenantId')}
   async read<T>(key:StateKey):Promise<SharedStateSnapshot<T>>{const result=await this.client.query<StateRow>('SELECT key,value,has_value,version,fence,lease_owner,lease_until,updated_at FROM captra_shared_state WHERE tenant_id=$1 AND key_hash=$2',[this.tenantId,hashStateKey(key)]);return result.rows[0]?stateFrom<T>(result.rows[0]):{key,value:undefined,version:0,updatedAt:0}}
-  async commit<T>(key:StateKey,value:T,options:CommitOptions):Promise<SharedStateSnapshot<T>>{const lease=options.lease,hash=hashStateKey(key),result=await this.client.query<StateRow>(`WITH committed AS (
-    INSERT INTO captra_shared_state (tenant_id,key_hash,key,value,has_value,version) SELECT $1,$2,$3::jsonb,$4::jsonb,true,1 WHERE $5=0 AND $6::bigint IS NULL
-    ON CONFLICT (tenant_id,key_hash) DO UPDATE SET value=EXCLUDED.value,has_value=true,version=captra_shared_state.version+1,updated_at=now()
-    WHERE captra_shared_state.version=$5 AND ($6::bigint IS NULL OR (captra_shared_state.fence=$6 AND captra_shared_state.lease_owner=$7 AND captra_shared_state.lease_until>now()))
-    RETURNING *
-  ), audited AS (
-    INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token)
-    SELECT $8,$1,$2,key,'state.committed',$9,version,$6 FROM committed
-  ) SELECT * FROM committed`,[this.tenantId,hash,JSON.stringify(key),JSON.stringify(value),options.expectedVersion,lease?.token??null,lease?.owner??null,crypto.randomUUID(),options.actor]);if(result.rows[0])return stateFrom<T>(result.rows[0]);const current=await this.read<T>(key);if(current.version!==options.expectedVersion){await this.record(key,'state.conflict',options.actor,current.version,lease?.token);throw new StateConflictError(key,options.expectedVersion,current.version)}throw new StateLeaseError('Lease is missing, expired, or has been superseded')}
+  async commit<T>(key:StateKey,value:T,options:CommitOptions):Promise<SharedStateSnapshot<T>>{
+    const lease=options.lease,hash=hashStateKey(key),id=crypto.randomUUID(),serialized=JSON.stringify(value)
+    const result=lease
+      ?await this.client.query<StateRow>(`WITH committed AS (
+        UPDATE captra_shared_state SET value=$3::jsonb,has_value=true,version=version+1,updated_at=now()
+        WHERE tenant_id=$1 AND key_hash=$2 AND version=$4 AND fence=$5 AND lease_owner=$6 AND lease_until>now() RETURNING *
+      ), audited AS (
+        INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token)
+        SELECT $7,$1,$2,key,'state.committed',$8,version,$5 FROM committed
+      ) SELECT * FROM committed`,[this.tenantId,hash,serialized,options.expectedVersion,lease.token,lease.owner,id,options.actor])
+      :await this.client.query<StateRow>(`WITH committed AS (
+        INSERT INTO captra_shared_state (tenant_id,key_hash,key,value,has_value,version) SELECT $1,$2,$3::jsonb,$4::jsonb,true,1 WHERE $5=0
+        ON CONFLICT (tenant_id,key_hash) DO UPDATE SET value=EXCLUDED.value,has_value=true,version=captra_shared_state.version+1,updated_at=now()
+        WHERE captra_shared_state.version=$5 RETURNING *
+      ), audited AS (
+        INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version)
+        SELECT $6,$1,$2,key,'state.committed',$7,version FROM committed
+      ) SELECT * FROM committed`,[this.tenantId,hash,JSON.stringify(key),serialized,options.expectedVersion,id,options.actor])
+    if(result.rows[0])return stateFrom<T>(result.rows[0])
+    const current=await this.read<T>(key)
+    if(current.version!==options.expectedVersion){await this.record(key,'state.conflict',options.actor,current.version,lease?.token);throw new StateConflictError(key,options.expectedVersion,current.version)}
+    throw new StateLeaseError('Lease is missing, expired, or has been superseded')
+  }
   async acquire(key:StateKey,{owner,ttlMs=10_000}:AcquireLeaseOptions):Promise<StateLease>{if(ttlMs<=0)throw new StateLeaseError('Lease TTL must be positive');const hash=hashStateKey(key),result=await this.client.query<StateRow>(`WITH leased AS (
     INSERT INTO captra_shared_state (tenant_id,key_hash,key,fence,lease_owner,lease_until) VALUES ($1,$2,$3::jsonb,1,$4,now()+($5*interval '1 millisecond'))
     ON CONFLICT (tenant_id,key_hash) DO UPDATE SET fence=captra_shared_state.fence+1,lease_owner=$4,lease_until=now()+($5*interval '1 millisecond'),updated_at=now()
