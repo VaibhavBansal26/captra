@@ -1,6 +1,7 @@
-import type { ModelAdapter,ModelMessage,ModelRequest,ModelResponse } from '@captra/core'
+import type { EmbeddingAdapter,ModelAdapter,ModelMessage,ModelRequest,ModelResponse } from '@captra/core'
 
 export type OpenAIOptions={model:string;apiKey?:string;baseUrl?:string;organization?:string;project?:string;fetch?:typeof fetch;headers?:HeadersInit;maxRetries?:number}
+export type OpenAIEmbeddingOptions=Omit<OpenAIOptions,'model'|'maxRetries'>&{model?:string;dimensions?:number}
 type OpenAIState={responseId:string;messageCount:number}
 type ResponseItem={type:string;id?:string;call_id?:string;name?:string;arguments?:string;content?:Array<{type:string;text?:string}>}
 type OpenAIResponse={id:string;model?:string;output_text?:string;output?:ResponseItem[];usage?:{input_tokens?:number;output_tokens?:number};error?:{message?:string}}
@@ -16,6 +17,12 @@ export function createOpenAI(options:OpenAIOptions):ModelAdapter{
     async generate(input){const response=await send(bodyFor(input),input.signal);const data=await response.json() as OpenAIResponse;if(!response.ok)throw new Error(data.error?.message??`OpenAI request failed: ${response.status}`);return fromResponse(data,input.messages.length)},
     async *stream(input){const response=await send(bodyFor(input,true),input.signal);if(!response.ok||!response.body){const text=await response.text();throw new Error(text||`OpenAI stream failed: ${response.status}`)}const reader=response.body.pipeThrough(new TextDecoderStream()).getReader();let buffer='';for(;;){const {done,value}=await reader.read();buffer+=value??'';const frames=buffer.split('\n\n');buffer=frames.pop()??'';for(const frame of frames){const raw=frame.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trim()).join('');if(!raw||raw==='[DONE]')continue;const event=JSON.parse(raw) as {type?:string;delta?:string};if(event.type==='response.output_text.delta'&&event.delta)yield event.delta}if(done)break}}
   }
+}
+
+export function createOpenAIEmbeddings(options:OpenAIEmbeddingOptions={}):EmbeddingAdapter{
+  const request=options.fetch??globalThis.fetch,baseUrl=(options.baseUrl??'https://api.openai.com/v1').replace(/\/$/,''),apiKey=options.apiKey??(globalThis as typeof globalThis&{process?:{env?:Record<string,string|undefined>}}).process?.env?.OPENAI_API_KEY
+  if(!apiKey)throw new Error('OpenAI API key is required')
+  return {async embed(texts){if(!texts.length)return [];if(texts.some(text=>!text.trim()))throw new Error('Embedding input cannot be empty');const response=await request(`${baseUrl}/embeddings`,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${apiKey}`,...options.headers},body:JSON.stringify({model:options.model??'text-embedding-3-small',input:texts,encoding_format:'float',...(options.dimensions?{dimensions:options.dimensions}:{})})});const data=await response.json() as {data?:Array<{index:number;embedding:number[]}>;error?:{message?:string}};if(!response.ok)throw new Error(data.error?.message??`OpenAI embeddings request failed: ${response.status}`);return (data.data??[]).sort((a,b)=>a.index-b.index).map(item=>item.embedding)}}
 }
 
 function isState(value:unknown):value is OpenAIState{return !!value&&typeof value==='object'&&typeof (value as OpenAIState).responseId==='string'&&typeof (value as OpenAIState).messageCount==='number'}

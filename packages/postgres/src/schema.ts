@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS captra_memories (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS captra_memories_recall ON captra_memories (tenant_id,scope,owner_id,created_at DESC);
+ALTER TABLE captra_memories ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+CREATE INDEX IF NOT EXISTS captra_memories_text ON captra_memories USING gin (to_tsvector('simple',content));
 
 CREATE TABLE IF NOT EXISTS captra_jobs (
   id uuid PRIMARY KEY,

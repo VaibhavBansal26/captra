@@ -72,6 +72,20 @@ const model=createOpenAI({model:'gpt-5.4'})
 The adapter supports function calls, response continuation, usage accounting, streaming, cancellation, and bounded retries for rate limits and transient server errors.
 Create it only in trusted server code; never expose `OPENAI_API_KEY` in a browser bundle.
 
+Adaptive memory wraps any memory store, including PostgreSQL:
+
+```ts
+const memory=new AdaptiveMemoryStore(
+  new PostgresMemoryStore(pool),
+  createOpenAIEmbeddings({model:'text-embedding-3-small'}),
+  {limit:12,minSimilarity:.35,deduplicateSimilarity:.98},
+)
+
+await memory.ingest(conversation,{tenantId,scope:'user',ownerId:userId},createMemoryExtractor(model))
+```
+
+Recall is tenant- and scope-aware, excludes expired records, ranks candidates by cosine similarity, suppresses near duplicates, and injects only selected memories into agent context.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract

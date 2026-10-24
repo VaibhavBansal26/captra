@@ -19,7 +19,8 @@ export function agent<Input,Output>(definition:AgentDefinition<Input,Output>):Ca
 
 async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,input:Input,context:RuntimeContext,allowed:Set<string>,tools:{name:string;description:string;inputSchema:unknown}[]):Promise<Output>{
   const maxSteps=definition.budget?.maxSteps??8,maxToolCalls=definition.budget?.maxToolCalls??16,maxTokens=definition.budget?.maxTokens??50_000
-  const messages:ModelMessage[]=[{role:'system',content:`${definition.instructions}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}]
+  const memory=context.memories.length?`\nRelevant scoped memory:\n${context.memories.map(item=>`- [${item.type}] ${item.content}`).join('\n')}`:''
+  const messages:ModelMessage[]=[{role:'system',content:`${definition.instructions}${memory}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}]
   let toolCalls=0,tokens=0,providerState:unknown
   for(let step=1;step<=maxSteps;step++){
     await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${step}`,data:{step,maxSteps,toolCalls,tokens}})

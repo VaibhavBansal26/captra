@@ -12,7 +12,7 @@ export const recallTool=defineTool({
   name:'memory.recall',description:'Recall relevant memories available to the current identity',
   input:z.object({scopes:z.array(z.enum(['organization','user','project','session','task'])),query:z.string().optional(),limit:z.number().int().positive().max(100).default(20)}),
   output:z.object({items:z.array(z.object({id:z.string(),scope:z.string(),type:z.string(),content:z.string(),confidence:z.number()}))}),
-  execute:async({scopes,query,limit},context)=>{let records=await context.memory.recall(scopes,context);if(query){const terms=query.toLowerCase().split(/\s+/);records=records.filter(record=>terms.some(term=>record.content.toLowerCase().includes(term)))}return {items:records.slice(0,limit).map(({id,scope,type,content,confidence})=>({id,scope,type,content,confidence}))}}
+  execute:async({scopes,query,limit},context)=>{const records=await context.memory.recall(scopes,context,{query,limit});return {items:records.map(({id,scope,type,content,confidence})=>({id,scope,type,content,confidence}))}}
 })
 
 export const forgetTool=defineTool({
