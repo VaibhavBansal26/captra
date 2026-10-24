@@ -16,10 +16,10 @@ export function useCaptraState<T=unknown>(key:StateKey,options:{load?:()=>Promis
 }
 export function useOptimisticState<T=unknown>(key:StateKey,options:{state?:CaptraState}={}){const inherited=useContext(StateContext),store=options.state??inherited,hash=hashStateKey(key);return useCallback((update:T|((current:T|undefined)=>T))=>store.optimistic(key,update),[store,hash])}
 
-export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;state?:CaptraState;approve?:(result:CapabilityResult)=>Promise<boolean>}
+export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approverIdentity?:ExecutionIdentity;state?:CaptraState;approve?:(result:CapabilityResult)=>Promise<boolean>}
 export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
   const inherited=useContext(StateContext),state=options.state??inherited
-  const runtime = useMemo(() => createRuntime(app, options), [app, options.memory, options.runs, options.authorize, options.signal])
+  const runtime = useMemo(() => createRuntime(app, options), [app, options.memory, options.runs, options.budgets, options.effects, options.authorize, options.authorizeApproval, options.signal])
   const [result, setResult] = useState<CapabilityResult | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -30,7 +30,7 @@ export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
     try {
       const identity=options.identity??{tenantId:'default',userId:'anonymous',projectId:'default'}
       let next=await runtime.execute({capability,input,identity})
-      if(next.run.status==='waiting_for_approval'&&options.approve)next=await runtime.approve(next.run.id,(await options.approve(next))?'approved':'rejected')
+      if(next.run.status==='waiting_for_approval'&&options.approve){if(!options.approverIdentity)throw new Error('Local approval requires approverIdentity');next=await runtime.approve(next.run.id,(await options.approve(next))?'approved':'rejected',options.approverIdentity)}
       setResult(next)
       if(next.run.status==='completed')state.apply(next.capability.state)
       return next
@@ -40,7 +40,7 @@ export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
     } finally {
       setPending(false)
     }
-  }, [runtime, state, options.identity, options.approve])
+  }, [runtime, state, options.identity, options.approverIdentity, options.approve])
 
   return { runtime, result, pending, error, run }
 }

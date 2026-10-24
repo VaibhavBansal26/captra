@@ -47,7 +47,9 @@ Use `createStructuredGenerator()` when a capability needs one schema-constrained
 
 ## Human approval
 
-Set `approval:'required'` for work that must pause before its effect is accepted. The run persists its waiting state and can resume through the client or React hook. Approval policy can be tightened through `beforeApproval` hooks.
+Set `approval:'required'` for work that must pause before its effect is accepted. The run persists its waiting state and can resume through the client or React hook. The approver is recorded independently, must belong to the same tenant, and cannot be the requester by default. Use `approval:{required:true,allowRequester:true}` only for low-risk local workflows. Approval policy can be tightened with `authorizeApproval` and `beforeApproval` hooks.
+
+Write tools must declare `effect:'write'` and an `idempotencyKey`. Captra stores an effect receipt before executing the write, reuses completed results on retry, and stops with `EffectInDoubtError` when a failed write may have reached the external system. Reconcile that receipt instead of blindly repeating the side effect.
 
 ## Design guidance
 

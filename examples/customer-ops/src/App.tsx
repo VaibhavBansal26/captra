@@ -30,7 +30,7 @@ export default function App(){
   const [toast,setToast]=useState('')
   const [devOpen,setDevOpen]=useState(false)
   const run=async(capability:string,input:unknown)=>{setPending(true);setToast('');try{const next=await runtime.execute({capability,input,identity:{tenantId:'captra',userId:'maya',projectId:'support'},idempotencyKey:`${capability}-${Date.now()}`});setResult(next)}finally{setPending(false)}}
-  const decide=async(decision:'approved'|'rejected')=>{if(!result)return;setPending(true);const next=await runtime.approve(result.run.id,decision);setResult(next);setPending(false);setToast(decision==='approved'?'Refund completed and customer notified':'Refund request rejected')}
+  const decide=async(decision:'approved'|'rejected')=>{if(!result)return;setPending(true);const next=await runtime.approve(result.run.id,decision,{tenantId:'captra',userId:'team-lead',projectId:'support'});setResult(next);setPending(false);setToast(decision==='approved'?'Refund completed and customer notified':'Refund request rejected')}
   const closeIntro=useCallback(()=>setIntro(false),[])
   return <>{intro&&<BrandIntro onComplete={closeIntro}/>}<div className="app-shell">
     <aside className="rail"><button className="logo" aria-label="Replay Captra intro" onClick={()=>setIntro(true)}><img src="/captra-mark.svg" alt=""/></button><nav><button className="active">⌁<small>Inbox</small></button><button>◫<small>Runs</small></button><button>◇<small>Memory</small></button><button onClick={()=>setDevOpen(true)}>⌘<small>Code</small></button></nav><div className="rail-foot"><button>?</button><div className="avatar">VB</div></div></aside>

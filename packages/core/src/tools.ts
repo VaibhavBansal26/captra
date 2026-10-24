@@ -1,5 +1,6 @@
 import type { ZodType } from 'zod'
 import type { RuntimeContext } from './core.js'
+import { EffectInDoubtError } from './effects.js'
 
 export type ToolContext=RuntimeContext
 export type Tool<Input,Output>={
@@ -9,11 +10,14 @@ export type Tool<Input,Output>={
   readonly input:ZodType<Input>
   readonly output:ZodType<Output>
   readonly permissions:readonly string[]
+  readonly effect:'read'|'write'
+  readonly idempotencyKey?:(input:Input,context:ToolContext)=>string
   readonly execute:(input:Input,context:ToolContext)=>Promise<Output>
 }
 
-export function defineTool<Input,Output>(definition:Omit<Tool<Input,Output>,'kind'|'permissions'>&{permissions?:readonly string[]}):Tool<Input,Output>{
-  return Object.freeze({kind:'tool' as const,permissions:definition.permissions??[],...definition})
+export function defineTool<Input,Output>(definition:Omit<Tool<Input,Output>,'kind'|'permissions'|'effect'>&{permissions?:readonly string[];effect?:'read'|'write'}):Tool<Input,Output>{
+  if(definition.effect==='write'&&!definition.idempotencyKey)throw new Error(`Write tool ${definition.name} requires idempotencyKey`)
+  return Object.freeze({kind:'tool' as const,permissions:definition.permissions??[],effect:definition.effect??'read',...definition})
 }
 
 export type ToolCall={name:string;input:unknown}
@@ -29,7 +33,14 @@ export function createToolRunner(tools:readonly Tool<any,any>[],context:RuntimeC
     let parsed:unknown=tool.input.parse(input);if(lifecycle.before)parsed=tool.input.parse(await lifecycle.before(name,parsed,context))
     const span=context.telemetry.startSpan('captra.tool',{runId:context.runId,tool:name,tenantId:context.tenantId}),startedAt=Date.now();await context.emit({type:'tool.started',capability:name,detail:tool.description,data:{input:parsed}})
     try{
-      let value:unknown=tool.output.parse(await tool.execute(parsed,context));if(lifecycle.after)value=tool.output.parse(await lifecycle.after(name,value,context))
+      let value:unknown
+      if(tool.effect==='write'){
+        const key=tool.idempotencyKey!(parsed,context),claim=await context.effects.claim(context.tenantId,tool.name,key)
+        if(claim.status==='completed')value=tool.output.parse(claim.output)
+        else if(claim.status==='in_doubt')throw new EffectInDoubtError(claim.receipt)
+        else try{value=tool.output.parse(await tool.execute(parsed,context));await context.effects.complete(context.tenantId,tool.name,key,value)}catch(error){await context.effects.doubt(context.tenantId,tool.name,key,error instanceof Error?error.message:'Tool effect failed');throw error}
+      }else value=tool.output.parse(await tool.execute(parsed,context))
+      if(lifecycle.after)value=tool.output.parse(await lifecycle.after(name,value,context))
       await context.emit({type:'tool.completed',capability:name,detail:'Tool call completed'});span.setAttribute('status','completed');span.end();context.telemetry.histogram?.('captra.tool.duration',Date.now()-startedAt,{tool:name,status:'completed'})
       return value as Output
     }catch(error){

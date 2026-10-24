@@ -1,5 +1,5 @@
 import { toJSONSchema,type ZodType } from 'zod'
-import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core.js'
+import { capability,type ApprovalPolicy,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core.js'
 import type { MemoryScope } from './memory.js'
 import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models.js'
 import type { Tool } from './tools.js'
@@ -8,7 +8,7 @@ import { BudgetExceededError,estimateModelTokens,type BudgetQuota } from './budg
 export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number;maxInputTokens?:number;maxOutputTokens?:number;maxCostUsd?:number;user?:BudgetQuota;tenant?:BudgetQuota;estimateTokens?:(messages:readonly ModelMessage[])=>number;estimateCostUsd?:(inputTokens:number,outputTokens:number)=>number}
 export type AgentDefinition<Input,Output,Name extends string=string>={
   name:Name;description:string;instructions:string;input:ZodType<Input>;output:ZodType<Output>;model:ModelAdapter
-  tools?:readonly Tool<any,any>[];memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:'never'|'required'
+  tools?:readonly Tool<any,any>[];memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:ApprovalPolicy
   idempotent?:boolean;policy?:ExecutionPolicy;budget?:AgentBudget;temperature?:number;view:ViewReference<Output>|unknown
 }
 

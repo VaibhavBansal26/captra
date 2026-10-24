@@ -10,7 +10,7 @@ Resolve `tenantId`, `userId`, and `projectId` from a verified server session. Ne
 
 - Register the minimum set of tools.
 - Separate read tools from tools with external effects.
-- Make writes idempotent when possible.
+- Declare external writes with `effect:'write'` and a stable `idempotencyKey`; Captra blocks ambiguous retries with an effect receipt.
 - Require approval for irreversible or high-impact work.
 - Validate tool output even when the provider API is trusted.
 - Keep credentials in server-side closures.
@@ -35,6 +35,6 @@ Use a distributed `RateLimitAdapter` when traffic spans multiple processes or re
 
 ## Tenant isolation
 
-PostgreSQL adapters scope records by tenant and owner. Run routes verify ownership before returning status, events, replay data, approvals, or cancellation. Keep database credentials server-side and use separate environments for production and testing.
+PostgreSQL adapters scope records by tenant and owner. Run routes verify ownership before returning status, events, replay data, or cancellation. Approval routes require a same-tenant identity and the runtime denies requester self-approval by default. Keep database credentials server-side and use separate environments for production and testing.
 
 For vulnerability reporting, see the repository [security policy](https://github.com/VaibhavBansal26/captra/security/policy).

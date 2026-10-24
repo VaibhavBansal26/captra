@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS captra_runs (
   validated_input jsonb,
   output jsonb,
   approval text,
+  approval_identity jsonb,
   error text,
   idempotency_key text,
   created_at timestamptz NOT NULL DEFAULT now(),
@@ -21,6 +22,7 @@ CREATE TABLE IF NOT EXISTS captra_runs (
 CREATE UNIQUE INDEX IF NOT EXISTS captra_runs_idempotency
   ON captra_runs (tenant_id,idempotency_key) WHERE idempotency_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS captra_runs_identity ON captra_runs (tenant_id,user_id,created_at DESC);
+ALTER TABLE captra_runs ADD COLUMN IF NOT EXISTS approval_identity jsonb;
 
 CREATE TABLE IF NOT EXISTS captra_events (
   id uuid PRIMARY KEY,
@@ -74,6 +76,18 @@ CREATE TABLE IF NOT EXISTS captra_jobs (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS captra_jobs_claim ON captra_jobs (status,available_at) WHERE status IN ('queued','leased');
+
+CREATE TABLE IF NOT EXISTS captra_effects (
+  tenant_id text NOT NULL,
+  tool text NOT NULL,
+  key text NOT NULL,
+  status text NOT NULL,
+  output jsonb,
+  error text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,tool,key)
+);
 
 CREATE TABLE IF NOT EXISTS captra_shared_state (
   tenant_id text NOT NULL,

@@ -1,5 +1,13 @@
 # @captra-ai/core
 
+## 0.5.0
+
+### Minor Changes
+
+- Harden execution with independent approver identities, requester self-approval denial, per-run cancellation, compare-and-set terminal transitions, and durable effect receipts for side-effect-safe retries.
+
+  Write tools can now declare `effect: 'write'` with a stable `idempotencyKey`. Completed effects are reused and ambiguous effects stop with `EffectInDoubtError` instead of being replayed.
+
 ## 0.4.1
 
 ### Patch Changes

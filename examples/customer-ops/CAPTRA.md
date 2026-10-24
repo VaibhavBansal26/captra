@@ -34,7 +34,11 @@ const run = await runtime.execute({
 })
 
 if (run.run.status === 'waiting_for_approval') {
-  await runtime.approve(run.run.id, 'approved')
+  await runtime.approve(run.run.id, 'approved', {
+    tenantId: 'acme',
+    userId: 'team-lead',
+    projectId: 'support',
+  })
 }
 ```
 
