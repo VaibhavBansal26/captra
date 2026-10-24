@@ -20,6 +20,7 @@
     "build:example": "npm run build -w @captra-ai/customer-ops",
     "check:packages": "node scripts/verify-packages.mjs",
     "check:scaffold": "node scripts/verify-scaffold.mjs",
+    "check:public-release": "node scripts/verify-public-release.mjs",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "npm run build:packages && changeset publish",
