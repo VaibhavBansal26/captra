@@ -9,10 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@captra/client": "^0.1.0",
-    "@captra/core": "^0.1.0",
-    "@captra/react": "^0.1.0",
-    "@captra/server": "^0.1.0",
+    "captra": "^0.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"

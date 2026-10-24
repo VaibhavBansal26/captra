@@ -1,0 +1,32 @@
+{
+  "name": "captra",
+  "version": "0.1.0",
+  "description": "The AI-native JavaScript framework for typed capabilities, agents, memory, tools, and generated UI.",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/captra" },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./client": { "types": "./dist/client.d.ts", "import": "./dist/client.js" },
+    "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
+    "./server": { "types": "./dist/server.d.ts", "import": "./dist/server.js" },
+    "./server/node": { "types": "./dist/server-node.d.ts", "import": "./dist/server-node.js" },
+    "./postgres": { "types": "./dist/postgres.d.ts", "import": "./dist/postgres.js" },
+    "./openai": { "types": "./dist/openai.d.ts", "import": "./dist/openai.js" }
+  },
+  "files": ["dist"],
+  "publishConfig": { "access": "public" },
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "dependencies": {
+    "@captra/client": "^0.1.0",
+    "@captra/core": "^0.1.0",
+    "@captra/openai": "^0.1.0",
+    "@captra/postgres": "^0.1.0",
+    "@captra/react": "^0.1.0",
+    "@captra/server": "^0.1.0"
+  },
+  "peerDependencies": { "react": ">=18" },
+  "peerDependenciesMeta": { "react": { "optional": true } }
+}

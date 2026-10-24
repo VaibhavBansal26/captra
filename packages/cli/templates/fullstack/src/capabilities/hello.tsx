@@ -1,4 +1,4 @@
-import { capability,type CapabilityViewProps } from '@captra/core'
+import { capability,type CapabilityViewProps } from 'captra'
 import { z } from 'zod'
 
 const HelloResult=z.object({message:z.string(),remembered:z.boolean()})

@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
-import { createRuntime } from '@captra/core'
-import { createCaptraHandler } from '@captra/server'
-import { createNodeHandler } from '@captra/server/node'
+import { createRuntime } from 'captra'
+import { createCaptraHandler } from 'captra/server'
+import { createNodeHandler } from 'captra/server/node'
 import { app } from './captra.app.js'
 
 const runtime=createRuntime(app)

@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest'
-import { createRuntime,capabilityViews,defineApp } from '@captra/core'
+import { createRuntime,capabilityViews,defineApp } from 'captra'
 import { hello } from './hello.js'
 
 const runtime=createRuntime(defineApp({name:'Test',scopes:['user'],capabilities:[hello],surface:capabilityViews()}))

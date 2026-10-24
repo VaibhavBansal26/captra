@@ -28,7 +28,7 @@ function inspect(directory){
   console.log(`\nCaptra project: ${directory}`)
   for(const item of required)console.log(`${existsSync(resolve(directory,item))?'✓':'×'} ${item}`)
   const pkgPath=resolve(directory,'package.json')
-  if(existsSync(pkgPath)){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));const deps={...pkg.dependencies,...pkg.devDependencies};for(const name of ['@captra/core','@captra/react',...(fullStack?['@captra/client','@captra/server']:[])])console.log(`${deps[name]?'✓':'×'} ${name}${deps[name]?` ${deps[name]}`:''}`)}
+  if(existsSync(pkgPath)){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));const deps={...pkg.dependencies,...pkg.devDependencies},frameworks=deps.captra?['captra']:['@captra/core','@captra/react',...(fullStack?['@captra/client','@captra/server']:[])];for(const name of frameworks)console.log(`${deps[name]?'✓':'×'} ${name}${deps[name]?` ${deps[name]}`:''}`)}
   console.log('')
 }
 function copyTemplate(source,destination,replacements){for(const entry of readdirSync(source)){const from=resolve(source,entry),to=resolve(destination,entry),stats=statSync(from);if(stats.isDirectory()){mkdirSync(to,{recursive:true});copyTemplate(from,to,replacements)}else{mkdirSync(dirname(to),{recursive:true});let content=readFileSync(from,'utf8');for(const [token,value] of Object.entries(replacements))content=content.replaceAll(token,value);writeFileSync(to,content)}}}

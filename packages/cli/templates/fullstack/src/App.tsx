@@ -1,6 +1,6 @@
 import { useCallback,useState } from 'react'
-import { CapabilityOutput } from '@captra/react'
-import type { RemoteCapabilityResult } from '@captra/core'
+import { CapabilityOutput } from 'captra/react'
+import type { RemoteCapabilityResult } from 'captra'
 import { HelloCard } from './capabilities/hello.js'
 import { client } from './client.js'
 import { BrandIntro } from './BrandIntro.js'

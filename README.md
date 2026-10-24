@@ -17,6 +17,16 @@ The starter is full-stack: Vite + React on port 5173, a Captra Node runtime on p
 
 It also includes Captra's accessible startup animation and production SVG mark. The animation respects reduced-motion preferences, can be skipped or replayed, and hands off automatically to the application.
 
+For custom setups, one install exposes the complete framework through explicit runtime-safe entry points:
+
+```ts
+import { capability,agent,defineApp } from 'captra'
+import { createCaptraClient } from 'captra/client'
+import { CapabilityOutput } from 'captra/react'
+import { createCaptraHandler } from 'captra/server'
+import { createNodeHandler } from 'captra/server/node'
+```
+
 ```tsx
 export const refund=capability({
   name:'refund',
@@ -191,6 +201,7 @@ await worker.runOnce()
 
 ## Packages
 
+- `captra` — recommended umbrella package with explicit client, React, server, Node, PostgreSQL, and OpenAI entry points
 - `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests
 - `@captra/client` — typed HTTP client and live event streaming
 - `@captra/postgres` — durable run, event, and multi-level memory storage
