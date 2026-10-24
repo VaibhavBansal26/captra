@@ -1,5 +1,5 @@
-import { createElement, useCallback, useMemo, useState, type ComponentType } from 'react'
-import { createRuntime, type AgentApp, type CapabilityResult, type ExecutionIdentity, type RemoteCapabilityResult, type RuntimeOptions } from '@captra/core'
+import { createElement, useCallback, useMemo, useState, type ComponentType, type ReactNode } from 'react'
+import { createRuntime, type AgentApp, type CapabilityResult, type CaptraEvent, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra/core'
 
 export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approve?:(result:CapabilityResult)=>Promise<boolean>}
 export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
@@ -53,4 +53,26 @@ export function CapabilityOutput({ result, views = {} }: { result: CapabilityRes
     value: result.value,
     capability: result.capability.name,
   })
+}
+
+export type CaptraPrimitiveProps={className?:string}
+const statusLabels:Record<RunRecord['status'],string>={created:'Created',queued:'Queued',running:'Running',waiting_for_approval:'Waiting for approval',completed:'Completed',failed:'Failed',cancelled:'Cancelled'}
+
+export function RunStatus({run,className,labels={}}:CaptraPrimitiveProps&{run:RunRecord;labels?:Partial<Record<RunRecord['status'],string>>}){
+  return <span className={className} data-captra="run-status" data-status={run.status} role="status" aria-live="polite">{labels[run.status]??statusLabels[run.status]}</span>
+}
+
+export function ApprovalPanel({result,onApprove,onReject,pending=false,className,title='Human approval required',approveLabel='Approve',rejectLabel='Reject',children}:CaptraPrimitiveProps&{result:CapabilityResult|RemoteCapabilityResult;onApprove:()=>void|Promise<void>;onReject:()=>void|Promise<void>;pending?:boolean;title?:string;approveLabel?:string;rejectLabel?:string;children?:ReactNode}){
+  if(result.run.status!=='waiting_for_approval')return null
+  return <section className={className} data-captra="approval" aria-labelledby={`captra-approval-${result.run.id}`}><h2 id={`captra-approval-${result.run.id}`}>{title}</h2>{children??<p>{result.capability.description}</p>}<div><button type="button" disabled={pending} onClick={()=>void onReject()}>{rejectLabel}</button><button type="button" disabled={pending} onClick={()=>void onApprove()}>{approveLabel}</button></div></section>
+}
+
+export function EventTimeline({events,className,empty='No run events yet.',renderTime=at=>new Date(at).toISOString()}:CaptraPrimitiveProps&{events:readonly CaptraEvent[];empty?:ReactNode;renderTime?:(at:number,event:CaptraEvent)=>ReactNode}){
+  if(!events.length)return <p className={className} data-captra="event-timeline-empty">{empty}</p>
+  return <ol className={className} data-captra="event-timeline">{events.map(event=><li key={event.id} data-event={event.type}><div><strong>{event.type}</strong><span>{event.detail}</span></div><time dateTime={new Date(event.at).toISOString()}>{renderTime(event.at,event)}</time></li>)}</ol>
+}
+
+export function CapabilityBoundary({result,views={},pending=false,error,onApprove,onReject,showTrace=false,className,pendingFallback='Running capability…'}:CaptraPrimitiveProps&{result?:CapabilityResult|RemoteCapabilityResult|null;views?:Record<string,ComponentType<any>>;pending?:boolean;error?:unknown;onApprove?:()=>void|Promise<void>;onReject?:()=>void|Promise<void>;showTrace?:boolean;pendingFallback?:ReactNode}){
+  const message=error instanceof Error?error.message:typeof error==='string'?error:null
+  return <section className={className} data-captra="capability-boundary" aria-busy={pending}>{message&&<p role="alert" data-captra="error">{message}</p>}{pending&&<div role="status" aria-live="polite" data-captra="pending">{pendingFallback}</div>}{result&&<><RunStatus run={result.run}/>{result.run.status==='failed'&&result.run.error&&<p role="alert" data-captra="error">{result.run.error}</p>}<CapabilityOutput result={result} views={views}/>{onApprove&&onReject&&<ApprovalPanel result={result} onApprove={onApprove} onReject={onReject} pending={pending}/>} {showTrace&&<EventTimeline events={result.trace}/>}</>}</section>
 }

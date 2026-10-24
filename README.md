@@ -87,6 +87,18 @@ const result=await client.execute('refund',{amount:48})
 
 Remote responses contain a small transport-safe capability descriptor rather than runtime functions or validation objects. React resolves the returned view name against an explicit local component registry: `<CapabilityOutput result={result} views={{RefundCard}} />`.
 
+Common agent states can be rendered with accessible, unstyled primitives that expose stable `data-captra` attributes for complete visual control:
+
+```tsx
+<CapabilityBoundary
+  result={result} pending={pending} error={error}
+  views={{RefundCard}} showTrace
+  onApprove={approve} onReject={reject}
+/>
+```
+
+Use `RunStatus`, `ApprovalPanel`, and `EventTimeline` independently when a product needs a custom layout. Labels, empty states, timestamps, approval copy, and CSS classes remain application-controlled.
+
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts

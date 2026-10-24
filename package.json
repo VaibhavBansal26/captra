@@ -11,7 +11,7 @@
   "type": "module",
   "workspaces": ["packages/*", "examples/*"],
   "scripts": {
-    "test": "npm run build:packages && npm run test -w @captra/core && npm run test -w @captra/client && npm run test -w @captra/server && npm run test -w @captra/postgres && npm run test -w @captra/openai && npm run check:scaffold",
+    "test": "npm run build:packages && npm run test -w @captra/core && npm run test -w @captra/client && npm run test -w @captra/server && npm run test -w @captra/postgres && npm run test -w @captra/openai && npm run test -w @captra/react && npm run check:scaffold",
     "build": "npm run build:packages && npm run build:example",
     "build:packages": "npm run build -w @captra/core && npm run build -w @captra/client && npm run build -w @captra/server && npm run build -w @captra/react && npm run build -w @captra/postgres && npm run build -w @captra/openai && npm run build -w captra",
     "build:example": "npm run build -w @captra/customer-ops",
