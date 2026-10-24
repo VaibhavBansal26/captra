@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- Update the full-stack starter to Captra 0.4 with shared multi-agent state.
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,16 @@
 # @captra-ai/server
 
+## 0.4.0
+
+### Minor Changes
+
+- Add shared multi-agent state with optimistic versioned commits, automatic conflict replanning, expiring leases, fencing tokens, validation, audit history, capability lock declarations, and a tenant-scoped PostgreSQL adapter.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

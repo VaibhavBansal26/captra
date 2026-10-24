@@ -138,6 +138,28 @@ else change.rollback()
 
 Use `createState()` with `CaptraStateProvider` to isolate an app, tenant, or test. `dehydrate()`/`hydrate()` support server rendering, while memory and local-storage persistence adapters support longer-lived clients.
 
+### Shared multi-agent state
+
+Shared state uses optimistic versions for normal agent work and short, expiring leases with fencing tokens for critical commits. Model inference happens before the commit, so an LLM never holds a database lock while it thinks:
+
+```ts
+const inventory=sharedState<Inventory>({
+  key:['inventory',productId],
+  adapter:new PostgresSharedStateAdapter(pool,tenantId),
+  schema:Inventory,
+})
+
+const allocation=await coordinateAgentState({
+  state:inventory,
+  actor:`agent:${runId}`,
+  decide:async snapshot=>planner.allocate(snapshot.value),
+  validate:next=>inventoryPolicy.assertValid(next),
+  maxConflicts:2,
+})
+```
+
+Each commit is compare-and-swap: if another worker changed the version, the agent receives the new snapshot and replans. `acquire()`, `renew()`, and `release()` are available for short exclusive sections; monotonically increasing fencing tokens prevent an expired agent from writing after another worker takes over. PostgreSQL state is tenant-scoped and records commits, conflicts, and lease activity in an audit history.
+
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts

@@ -74,6 +74,34 @@ CREATE TABLE IF NOT EXISTS captra_jobs (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS captra_jobs_claim ON captra_jobs (status,available_at) WHERE status IN ('queued','leased');
+
+CREATE TABLE IF NOT EXISTS captra_shared_state (
+  tenant_id text NOT NULL,
+  key_hash text NOT NULL,
+  key jsonb NOT NULL,
+  value jsonb,
+  has_value boolean NOT NULL DEFAULT false,
+  version bigint NOT NULL DEFAULT 0,
+  fence bigint NOT NULL DEFAULT 0,
+  lease_owner text,
+  lease_until timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,key_hash)
+);
+
+CREATE TABLE IF NOT EXISTS captra_state_events (
+  id uuid PRIMARY KEY,
+  tenant_id text NOT NULL,
+  key_hash text NOT NULL,
+  key jsonb NOT NULL,
+  type text NOT NULL,
+  actor text NOT NULL,
+  version bigint NOT NULL,
+  token bigint,
+  at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_state_events_history ON captra_state_events (tenant_id,key_hash,at,id);
 `
 
 export function postgresVectorSchema(dimensions:number){if(!Number.isInteger(dimensions)||dimensions<1||dimensions>16_000)throw new Error('Vector dimensions must be an integer between 1 and 16000');return `

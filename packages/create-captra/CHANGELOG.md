@@ -1,5 +1,16 @@
 # create-captra
 
+## 0.4.0
+
+### Minor Changes
+
+- Scaffold Captra 0.4 applications with shared multi-agent state support.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/cli@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

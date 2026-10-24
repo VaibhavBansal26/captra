@@ -1,4 +1,5 @@
 import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CheckpointRecord,type CheckpointStore,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra-ai/core'
+import { hashStateKey,StateConflictError,StateLeaseError,type AcquireLeaseOptions,type CommitOptions,type SharedStateAdapter,type SharedStateEvent,type SharedStateSnapshot,type StateKey,type StateLease } from '@captra-ai/state'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
 export { postgresSchema,postgresVectorSchema }
@@ -12,12 +13,16 @@ type EventRow={id:string;run_id:string;sequence:number;protocol:string;at:Date|s
 type MemoryRow={id:string;tenant_id:string;scope:MemoryScope;owner_id:string;type:MemoryRecord['type'];content:string;confidence:number;created_at:Date|string;expires_at?:Date|string}
 type JobRow={id:string;run_id:string;attempts:number;max_attempts:number;available_at:Date|string;lease_until?:Date|string;leased_by?:string}
 type CheckpointRow={id:string;run_id:string;key:string;sequence:number;state:unknown;created_at:Date|string}
+type StateRow={key:StateKey;value:unknown;has_value:boolean;version:number|string;fence:number|string;lease_owner?:string;lease_until?:Date|string;updated_at:Date|string}
+type StateEventRow={id:string;key:StateKey;type:SharedStateEvent['type'];actor:string;version:number|string;token?:number|string;at:Date|string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
 const memoryFrom=(row:MemoryRow):MemoryRecord=>({id:row.id,tenantId:row.tenant_id,scope:row.scope,ownerId:row.owner_id,type:row.type,content:row.content,confidence:row.confidence,createdAt:millis(row.created_at),expiresAt:row.expires_at?millis(row.expires_at):undefined})
 const jobFrom=(row:JobRow):WorkItem=>({id:row.id,runId:row.run_id,attempts:row.attempts,maxAttempts:row.max_attempts,availableAt:millis(row.available_at),leaseUntil:row.lease_until?millis(row.lease_until):undefined,leasedBy:row.leased_by})
 const checkpointFrom=(row:CheckpointRow):CheckpointRecord=>({id:row.id,runId:row.run_id,key:row.key,sequence:row.sequence,state:row.state,createdAt:millis(row.created_at)})
+const stateFrom=<T>(row:StateRow):SharedStateSnapshot<T>=>({key:row.key,value:row.has_value?row.value as T:undefined,version:Number(row.version),updatedAt:millis(row.updated_at)})
+const stateEventFrom=(row:StateEventRow):SharedStateEvent=>({id:row.id,key:row.key,type:row.type,actor:row.actor,version:Number(row.version),at:millis(row.at),...(row.token===undefined?{}:{token:Number(row.token)})})
 
 export class PostgresRunStore implements RunStore{
   constructor(readonly client:SqlClient){}
@@ -51,6 +56,33 @@ export class PostgresWorkQueue implements WorkQueue{
   async release(id:string,workerId:string,delayMs:number){const result=await this.client.query(`UPDATE captra_jobs SET status='queued',available_at=now()+($3*interval '1 millisecond'),leased_by=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND leased_by=$2`,[id,workerId,delayMs]);return (result.rowCount??0)>0}
   async fail(id:string,workerId:string,error:string){const result=await this.client.query(`UPDATE captra_jobs SET status='dead',error=$3,leased_by=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND leased_by=$2`,[id,workerId,error]);return (result.rowCount??0)>0}
   async heartbeat(id:string,workerId:string,leaseMs:number){const result=await this.client.query(`UPDATE captra_jobs SET lease_until=now()+($3*interval '1 millisecond'),updated_at=now() WHERE id=$1 AND leased_by=$2 AND status='leased'`,[id,workerId,leaseMs]);return (result.rowCount??0)>0}
+}
+
+export class PostgresSharedStateAdapter implements SharedStateAdapter{
+  constructor(readonly client:SqlClient,readonly tenantId:string){if(!tenantId)throw new Error('Postgres shared state requires tenantId')}
+  async read<T>(key:StateKey):Promise<SharedStateSnapshot<T>>{const result=await this.client.query<StateRow>('SELECT key,value,has_value,version,fence,lease_owner,lease_until,updated_at FROM captra_shared_state WHERE tenant_id=$1 AND key_hash=$2',[this.tenantId,hashStateKey(key)]);return result.rows[0]?stateFrom<T>(result.rows[0]):{key,value:undefined,version:0,updatedAt:0}}
+  async commit<T>(key:StateKey,value:T,options:CommitOptions):Promise<SharedStateSnapshot<T>>{const lease=options.lease,hash=hashStateKey(key),result=await this.client.query<StateRow>(`WITH committed AS (
+    INSERT INTO captra_shared_state (tenant_id,key_hash,key,value,has_value,version) VALUES ($1,$2,$3::jsonb,$4::jsonb,true,1)
+    ON CONFLICT (tenant_id,key_hash) DO UPDATE SET value=EXCLUDED.value,has_value=true,version=captra_shared_state.version+1,updated_at=now()
+    WHERE captra_shared_state.version=$5 AND ($6::bigint IS NULL OR (captra_shared_state.fence=$6 AND captra_shared_state.lease_owner=$7 AND captra_shared_state.lease_until>now()))
+    RETURNING *
+  ), audited AS (
+    INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token)
+    SELECT $8,$1,$2,key,'state.committed',$9,version,$6 FROM committed
+  ) SELECT * FROM committed`,[this.tenantId,hash,JSON.stringify(key),JSON.stringify(value),options.expectedVersion,lease?.token??null,lease?.owner??null,crypto.randomUUID(),options.actor]);if(result.rows[0])return stateFrom<T>(result.rows[0]);const current=await this.read<T>(key);if(current.version!==options.expectedVersion){await this.record(key,'state.conflict',options.actor,current.version,lease?.token);throw new StateConflictError(key,options.expectedVersion,current.version)}throw new StateLeaseError('Lease is missing, expired, or has been superseded')}
+  async acquire(key:StateKey,{owner,ttlMs=10_000}:AcquireLeaseOptions):Promise<StateLease>{if(ttlMs<=0)throw new StateLeaseError('Lease TTL must be positive');const hash=hashStateKey(key),result=await this.client.query<StateRow>(`WITH leased AS (
+    INSERT INTO captra_shared_state (tenant_id,key_hash,key,fence,lease_owner,lease_until) VALUES ($1,$2,$3::jsonb,1,$4,now()+($5*interval '1 millisecond'))
+    ON CONFLICT (tenant_id,key_hash) DO UPDATE SET fence=captra_shared_state.fence+1,lease_owner=$4,lease_until=now()+($5*interval '1 millisecond'),updated_at=now()
+    WHERE captra_shared_state.lease_until IS NULL OR captra_shared_state.lease_until<=now()
+    RETURNING *
+  ), audited AS (
+    INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token)
+    SELECT $6,$1,$2,key,'lease.acquired',$4,version,fence FROM leased
+  ) SELECT * FROM leased`,[this.tenantId,hash,JSON.stringify(key),owner,ttlMs,crypto.randomUUID()]);const row=result.rows[0];if(!row)throw new StateLeaseError('State is already leased');return{key,owner,token:Number(row.fence),expiresAt:millis(row.lease_until!)}}
+  async renew(lease:StateLease,ttlMs=10_000):Promise<StateLease>{if(ttlMs<=0)throw new StateLeaseError('Lease TTL must be positive');const result=await this.client.query<StateRow>(`WITH renewed AS (UPDATE captra_shared_state SET lease_until=now()+($5*interval '1 millisecond'),updated_at=now() WHERE tenant_id=$1 AND key_hash=$2 AND fence=$3 AND lease_owner=$4 AND lease_until>now() RETURNING *), audited AS (INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token) SELECT $6,$1,$2,key,'lease.renewed',$4,version,fence FROM renewed) SELECT * FROM renewed`,[this.tenantId,hashStateKey(lease.key),lease.token,lease.owner,ttlMs,crypto.randomUUID()]);const row=result.rows[0];if(!row)throw new StateLeaseError('Lease is missing, expired, or has been superseded');return{...lease,expiresAt:millis(row.lease_until!)}}
+  async release(lease:StateLease){const result=await this.client.query<StateRow>(`WITH released AS (UPDATE captra_shared_state SET lease_owner=NULL,lease_until=NULL,updated_at=now() WHERE tenant_id=$1 AND key_hash=$2 AND fence=$3 AND lease_owner=$4 AND lease_until>now() RETURNING *), audited AS (INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token) SELECT $5,$1,$2,key,'lease.released',$4,version,fence FROM released) SELECT * FROM released`,[this.tenantId,hashStateKey(lease.key),lease.token,lease.owner,crypto.randomUUID()]);if(!result.rows[0])throw new StateLeaseError('Lease is missing, expired, or has been superseded')}
+  async history(key:StateKey){const result=await this.client.query<StateEventRow>('SELECT id,key,type,actor,version,token,at FROM captra_state_events WHERE tenant_id=$1 AND key_hash=$2 ORDER BY at,id',[this.tenantId,hashStateKey(key)]);return result.rows.map(stateEventFrom)}
+  private async record(key:StateKey,type:SharedStateEvent['type'],actor:string,version:number,token?:number){await this.client.query('INSERT INTO captra_state_events (id,tenant_id,key_hash,key,type,actor,version,token) VALUES ($1,$2,$3,$4::jsonb,$5,$6,$7,$8)',[crypto.randomUUID(),this.tenantId,hashStateKey(key),JSON.stringify(key),type,actor,version,token??null])}
 }
 
 export class PostgresSemanticMemoryStore implements MemoryAdapter{

@@ -40,3 +40,5 @@ export class CaptraState{
 export function createState(options:ConstructorParameters<typeof CaptraState>[0]={}){return new CaptraState(options)}
 export function createMemoryPersistence(initial:SerializedState|null=null):StatePersistence&{read:()=>SerializedState|null}{let value=initial;return{load:()=>value,save:state=>{value=state},read:()=>value}}
 export function createLocalStoragePersistence(key='captra:state',storage:Pick<Storage,'getItem'|'setItem'>=localStorage):StatePersistence{return{load:()=>{const value=storage.getItem(key);return value?JSON.parse(value) as SerializedState:null},save:state=>storage.setItem(key,JSON.stringify(state))}}
+
+export * from './shared.js'
