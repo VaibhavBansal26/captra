@@ -9,7 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "captra": "^0.7.0",
+    "captra": "^0.8.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"

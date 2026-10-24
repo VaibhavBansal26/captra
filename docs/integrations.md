@@ -25,6 +25,8 @@ export const crm=definePlugin({
 
 The core runtime depends on interfaces rather than vendors. Custom infrastructure can implement model, memory, run, checkpoint, queue, state, planning, and telemetry contracts.
 
+A model adapter should translate `ModelRequest.output` into its provider's native JSON Schema mode when available. The adapter must still return the textual JSON in `ModelResponse.text`; Captra owns normalization, Zod validation, bounded repair, and portable error semantics.
+
 ## Plugin compatibility
 
 Plugin names must be unique. Tool conflicts fail during application construction, preventing load-order-dependent behavior. A plugin should declare its own version and document the compatible Captra range until a formal compatibility manifest is introduced.

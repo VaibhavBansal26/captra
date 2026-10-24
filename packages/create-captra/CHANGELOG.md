@@ -1,5 +1,13 @@
 # create-captra
 
+## 0.5.4
+
+### Patch Changes
+
+- Move the generated full-stack starter to the Captra 0.8 compatibility line.
+- Updated dependencies
+  - @captra-ai/cli@0.5.4
+
 ## 0.5.3
 
 ### Patch Changes

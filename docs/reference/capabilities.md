@@ -43,7 +43,19 @@ An agent receives the same runtime services as any capability. Its budgets limit
 
 ## Structured generation
 
-Use `createStructuredGenerator()` when a capability needs one schema-constrained model result without a multi-step agent loop. Use `createModelPlanner()` when natural language should select among registered capabilities.
+Agents send their Zod output schema through the provider-neutral `ModelRequest.output` contract. Supporting providers use native strict JSON Schema mode. Captra then normalizes optional Markdown fences, parses JSON, validates it with Zod, and performs at most one budgeted repair call before raising `StructuredOutputError`.
+
+Use `createStructuredGenerator()` when a capability needs one schema-constrained model result without a multi-step agent loop. It applies the same native-schema, normalization, validation, and bounded-repair pipeline. `createModelPlanner()` and adaptive-memory extraction also use this boundary, so framework-owned JSON paths do not rely on bare `JSON.parse`.
+
+```ts
+const generate=createStructuredGenerator(model)
+const answer=await generate(
+  z.object({answer:z.string(),confidence:z.number().min(0).max(1)}),
+  {messages:[{role:'user',content:'Summarize this incident'}]},
+)
+```
+
+Adapters that do not yet implement native structured output can ignore `request.output`; Captra retains the explicit schema instruction and validates or repairs their textual response.
 
 ## Human approval
 

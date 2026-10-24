@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ModelAdapter } from './models.js'
+import { createStructuredGenerator,type ModelAdapter } from './models.js'
 
 export type MemoryScope = 'organization' | 'user' | 'project' | 'session' | 'task'
 export type MemoryIdentity = { tenantId?:string; userId:string; projectId:string; sessionId?:string; taskId?:string; runId?:string }
@@ -34,4 +34,4 @@ function cosine(a:readonly number[],b:readonly number[]){if(!a.length||a.length!
 export type MemoryCandidate=Pick<MemoryRecord,'type'|'content'|'confidence'>
 export interface MemoryExtractor{extract(text:string):Promise<MemoryCandidate[]>}
 const candidatesSchema=z.array(z.object({type:z.enum(['fact','preference','decision','working-state']),content:z.string().min(1),confidence:z.number().min(0).max(1)}))
-export function createMemoryExtractor(model:ModelAdapter):MemoryExtractor{return {async extract(text){const response=await model.generate({messages:[{role:'system',content:'Extract only durable, useful memories. Return a JSON array with type (fact, preference, decision, or working-state), content, and confidence from 0 to 1. Return [] when nothing should be remembered.'},{role:'user',content:text}]});let value:unknown;try{value=JSON.parse(response.text)}catch{throw new Error('Memory extractor returned invalid JSON')}return candidatesSchema.parse(value)}}}
+export function createMemoryExtractor(model:ModelAdapter):MemoryExtractor{const generate=createStructuredGenerator(model);return {extract:text=>generate(candidatesSchema,{messages:[{role:'system',content:'Extract only durable, useful memories. Return an empty list when nothing should be remembered.'},{role:'user',content:text}]})}}

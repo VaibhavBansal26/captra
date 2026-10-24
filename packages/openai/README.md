@@ -13,6 +13,6 @@ const model = createOpenAI({ model: 'gpt-5.4' })
 const embeddings = createOpenAIEmbeddings({ model: 'text-embedding-3-small' })
 ```
 
-The adapter supports tool calls, response continuation, streaming, cancellation, usage accounting, and bounded retries. Create it only in trusted server code; never expose `OPENAI_API_KEY` to a browser bundle.
+The adapter supports strict native JSON Schema output, strict tool schemas, tool calls, response continuation, streaming, cancellation, usage accounting, and bounded retries. Create it only in trusted server code; never expose `OPENAI_API_KEY` to a browser bundle.
 
 [Provider documentation](https://vaibhavbansal26.github.io/captra/integrations) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/openai) · MIT

@@ -1,5 +1,13 @@
 # @captra-ai/openai
 
+## 0.4.0
+
+### Minor Changes
+
+- Add a provider-neutral structured-output contract with native JSON Schema support, Markdown-fence normalization, Zod validation, one bounded repair attempt, typed `StructuredOutputError` failures, and repair trace events.
+
+  Agents, standalone structured generation, model planning, and memory extraction now share this boundary. The OpenAI adapter maps it to strict Responses API JSON Schema output and supports opt-in strict function schemas.
+
 ## 0.3.2
 
 ### Patch Changes

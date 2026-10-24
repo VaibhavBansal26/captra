@@ -1,7 +1,7 @@
 import { toJSONSchema,type ZodType } from 'zod'
 import { capability,type ApprovalPolicy,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core.js'
 import type { MemoryScope } from './memory.js'
-import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models.js'
+import { parseStructuredOutput,StructuredOutputError,type ModelAdapter,type ModelMessage,type ModelResponse,type ModelToolCall } from './models.js'
 import type { Tool } from './tools.js'
 import { BudgetExceededError,estimateModelTokens,type BudgetQuota } from './budgets.js'
 
@@ -13,7 +13,7 @@ export type AgentDefinition<Input,Output,Name extends string=string>={
 }
 
 export function agent<const Name extends string,Input,Output>(definition:AgentDefinition<Input,Output,Name>):Capability<Input,Output,Name>{
-  const allowed=new Set((definition.tools??[]).map(tool=>tool.name)),tools=(definition.tools??[]).map(tool=>({name:tool.name,description:tool.description,inputSchema:toJSONSchema(tool.input)}))
+  const allowed=new Set((definition.tools??[]).map(tool=>tool.name)),tools=(definition.tools??[]).map(tool=>({name:tool.name,description:tool.description,inputSchema:toJSONSchema(tool.input),strict:true}))
   return capability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,memory:definition.memory,permissions:definition.permissions,approval:definition.approval,idempotent:definition.idempotent,policy:definition.policy,tools:definition.tools,mode:'agent',view:definition.view,
     run:async(input,context)=>runAgent(definition,input,context,allowed,tools)})
 }
@@ -48,7 +48,7 @@ async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,i
     try{reservation=await context.budgets.reserve({runId:context.runId,identity:context,amount:{tokens:estimatedInput+reservedOutput,costUsd:estimatedCost},limits:{user:definition.budget?.user,tenant:definition.budget?.tenant}})}catch(error){if(error instanceof BudgetExceededError)await exceed(context,definition.name,error);throw error}
     await context.emit({type:'budget.reserved',capability:definition.name,detail:'Reserved model-call budget',data:{reservationId:reservation.id,tokens:reservation.amount.tokens,costUsd:reservation.amount.costUsd}})
     const modelSpan=context.telemetry.startSpan('captra.model',{runId:context.runId,capability:definition.name,step:state.step}),modelStarted=Date.now();let response:ModelResponse
-    try{response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,maxOutputTokens:reservedOutput,providerState:state.providerState});modelSpan.setAttribute('model',response.model);modelSpan.setAttribute('inputTokens',response.usage?.inputTokens);modelSpan.setAttribute('outputTokens',response.usage?.outputTokens);modelSpan.end();context.telemetry.histogram?.('captra.model.duration',Date.now()-modelStarted,{capability:definition.name,model:response.model});context.telemetry.counter?.('captra.model.tokens',(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0),{capability:definition.name,model:response.model})}catch(error){await context.budgets.release(reservation.id);await context.emit({type:'budget.released',capability:definition.name,detail:'Released failed model-call reservation',data:{reservationId:reservation.id}});modelSpan.end(error);context.telemetry.counter?.('captra.model.failures',1,{capability:definition.name});throw error}
+    try{response=await definition.model.generate({messages:state.messages,tools,output:{type:'json_schema',name:outputName(definition.name),schema:toJSONSchema(definition.output),strict:true},signal:context.signal,temperature:definition.temperature,maxOutputTokens:reservedOutput,providerState:state.providerState});modelSpan.setAttribute('model',response.model);modelSpan.setAttribute('inputTokens',response.usage?.inputTokens);modelSpan.setAttribute('outputTokens',response.usage?.outputTokens);modelSpan.end();context.telemetry.histogram?.('captra.model.duration',Date.now()-modelStarted,{capability:definition.name,model:response.model});context.telemetry.counter?.('captra.model.tokens',(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0),{capability:definition.name,model:response.model})}catch(error){await context.budgets.release(reservation.id);await context.emit({type:'budget.released',capability:definition.name,detail:'Released failed model-call reservation',data:{reservationId:reservation.id}});modelSpan.end(error);context.telemetry.counter?.('captra.model.failures',1,{capability:definition.name});throw error}
     state.providerState=response.providerState
     const actualInput=response.usage?.inputTokens??estimatedInput,actualOutput=response.usage?.outputTokens??0,actualTokens=actualInput+actualOutput,actualCost=response.usage?.costUsd??definition.budget?.estimateCostUsd?.(actualInput,actualOutput)??0
     await context.budgets.commit(reservation.id,{tokens:actualTokens,costUsd:actualCost});await context.emit({type:'budget.committed',capability:definition.name,detail:'Committed actual model usage',data:{reservationId:reservation.id,inputTokens:actualInput,outputTokens:actualOutput,tokens:actualTokens,costUsd:actualCost,releasedTokens:Math.max(0,reservation.amount.tokens-actualTokens),releasedCostUsd:Math.max(0,reservation.amount.costUsd-actualCost)}})
@@ -61,14 +61,14 @@ async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,i
       state.messages.push({role:'assistant',content:response.text,toolCalls:response.toolCalls});state.pending={calls:[...response.toolCalls],next:0};await context.checkpoints.save(key,state)
       continue
     }
-    let candidate:unknown
-    try{candidate=JSON.parse(response.text)}catch{throw new Error('Agent returned invalid JSON output')}
-    const output=definition.output.parse(candidate)
+    let output:Output
+    try{output=parseStructuredOutput(definition.output,response.text,(state.repairAttempts??0)+1)}catch(error){if(error instanceof StructuredOutputError&&(state.repairAttempts??0)<1){state.repairAttempts=(state.repairAttempts??0)+1;state.messages.push({role:'assistant',content:response.text},{role:'user',content:'Repair the previous response. Return only valid JSON matching the required output schema.'});state.step++;await context.emit({type:'agent.output.repairing',capability:definition.name,detail:'Repairing invalid structured output',data:{failure:error.failure,attempt:state.repairAttempts}});await context.checkpoints.save(key,state);continue}throw error}
     await context.emit({type:'agent.completed',capability:definition.name,detail:`Completed in ${state.step} steps`,data:{steps:state.step,toolCalls:state.toolCalls,tokens:state.tokens,inputTokens:state.inputTokens,outputTokens:state.outputTokens,costUsd:state.costUsd,model:response.model}})
     return output
   }
 }
 
-type AgentState={version:1;step:number;messages:ModelMessage[];toolCalls:number;tokens:number;inputTokens:number;outputTokens:number;costUsd:number;providerState?:unknown;pending?:{calls:ModelToolCall[];next:number}}
+type AgentState={version:1;step:number;messages:ModelMessage[];toolCalls:number;tokens:number;inputTokens:number;outputTokens:number;costUsd:number;repairAttempts?:number;providerState?:unknown;pending?:{calls:ModelToolCall[];next:number}}
 function isAgentState(value:unknown):value is AgentState{const state=value as Partial<AgentState>|undefined;if(!state||state.version!==1||typeof state.step!=='number'||!Array.isArray(state.messages)||typeof state.toolCalls!=='number'||typeof state.tokens!=='number')return false;state.inputTokens??=state.tokens;state.outputTokens??=0;state.costUsd??=0;return true}
 async function exceed(context:RuntimeContext,capability:string,error:BudgetExceededError):Promise<never>{await context.emit({type:'budget.exceeded',capability,detail:error.message,data:{code:error.code,scope:error.scope,resource:error.resource,limit:error.limit,used:error.used,requested:error.requested,retryAt:error.retryAt}});throw error}
+function outputName(name:string){return `${name.replace(/[^a-zA-Z0-9_-]/g,'_')}_output`.slice(0,64)}
