@@ -1,5 +1,11 @@
 # captra
 
+## 0.5.1
+
+### Patch Changes
+
+- Bundle the Devtools entry point directly in `captra` so first-time installs do not depend on separate scoped-package visibility.
+
 ## 0.5.0
 
 ### Minor Changes
