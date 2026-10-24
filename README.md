@@ -1,3 +1,5 @@
+![Captra — the AI-native JavaScript framework](assets/brand/captra-readme-header.png)
+
 # Captra
 
 Captra is a capability-first framework for type-safe, memory-aware AI applications.
@@ -12,6 +14,8 @@ npx captra dev
 ```
 
 The starter is full-stack: Vite + React on port 5173, a Captra Node runtime on port 8787, typed HTTP transport, scoped memory, a local component registry, and a capability test. `npm run build` verifies both browser and server output; `npm test` exercises the contract and memory behavior.
+
+It also includes Captra's accessible startup animation and production SVG mark. The animation respects reduced-motion preferences, can be skipped or replayed, and hands off automatically to the application.
 
 ```tsx
 export const refund=capability({
