@@ -206,6 +206,25 @@ captra inspect my-app
 
 The runtime is model- and backend-independent. Implement `PlannerAdapter`, `MemoryAdapter`, and `RunStore` to connect an existing agent runtime and infrastructure.
 
+## Backend boundary
+
+`createCaptraHandler()` uses Web Standard `Request` and `Response`, so the same handler mounts in Next.js route handlers, Bun, Deno, Cloudflare Workers, and modern Node servers. Production controls are configured in one place:
+
+```ts
+const handler=createCaptraHandler(runtime,{
+  basePath:'/api/captra',
+  auth:resolveIdentity,
+  maxBodyBytes:1_000_000,
+  cors:{origins:['https://app.example.com'],credentials:true},
+})
+
+export const GET=handler
+export const POST=handler
+export const OPTIONS=handler
+```
+
+Routes are matched exactly beneath the mount path. The server negotiates the Captra protocol, attaches request IDs, bounds request bodies, answers CORS preflights before authentication, and returns stable error codes with appropriate HTTP statuses.
+
 ## Releases
 
 Every library package is compiled to ESM JavaScript with TypeScript declarations, declaration maps, source maps, explicit export maps, and restricted npm file lists. Changesets coordinates framework versions and the release workflow opens version PRs before publishing with npm provenance. Packages are not published until the repository is configured with an npm trusted publisher or `NPM_TOKEN`.
