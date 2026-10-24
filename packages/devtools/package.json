@@ -1,0 +1,38 @@
+{
+  "name": "@captra-ai/devtools",
+  "version": "0.5.0",
+  "description": "Inspectable run, event, checkpoint, memory, state, and model traces for Captra.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/devtools"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@captra-ai/core": ">=0.4.0 <1",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "react-dom": "^19.0.0",
+    "vitest": "^4.0.0"
+  }
+}

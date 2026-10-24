@@ -1,0 +1,17 @@
+import type { ReactNode } from 'react'
+import type { CaptraEvent,RunRecord } from '@captra-ai/core'
+
+export type DevtoolsCheckpoint={id:string;runId:string;key:string;sequence:number;state:unknown;createdAt:number}
+export type DevtoolsReplay={run:RunRecord;events:readonly CaptraEvent[];checkpoints?:readonly DevtoolsCheckpoint[]}
+export type RunInspection={durationMs:number;eventCounts:Record<string,number>;toolCalls:number;agentSteps:number;memoryRecords:number;tokens:number;conflicts:number}
+
+export function inspectRun(replay:DevtoolsReplay):RunInspection{const eventCounts:Record<string,number>={};let toolCalls=0,agentSteps=0,memoryRecords=0,tokens=0,conflicts=0;for(const event of replay.events){eventCounts[event.type]=(eventCounts[event.type]??0)+1;if(event.type==='tool.started')toolCalls++;if(event.type==='agent.step')agentSteps++;if(event.type==='memory.recalled')memoryRecords=numberFrom(event.data,'count');if(event.type==='agent.completed')tokens=numberFrom(event.data,'tokens');if(/conflict/i.test(event.type)||/conflict/i.test(event.detail))conflicts++}return {durationMs:Math.max(0,replay.run.updatedAt-replay.run.createdAt),eventCounts,toolCalls,agentSteps,memoryRecords,tokens,conflicts}}
+
+export function CaptraDevtools({replay,title='Captra Devtools',empty='Run a capability to inspect its trace.',renderData=defaultData}:{replay?:DevtoolsReplay|null;title?:ReactNode;empty?:ReactNode;renderData?:(data:unknown)=>ReactNode}){
+  if(!replay)return <section data-captra-devtools="empty" aria-label="Captra Devtools"><header><strong>{title}</strong></header><p>{empty}</p></section>
+  const summary=inspectRun(replay)
+  return <section data-captra-devtools="run" aria-label="Captra Devtools"><header><div><strong>{title}</strong><span data-status={replay.run.status}>{replay.run.status}</span></div><code>{replay.run.id}</code></header><dl data-captra-devtools="metrics"><Metric label="Duration" value={`${summary.durationMs} ms`}/><Metric label="Agent steps" value={summary.agentSteps}/><Metric label="Tool calls" value={summary.toolCalls}/><Metric label="Tokens" value={summary.tokens}/><Metric label="Memories" value={summary.memoryRecords}/><Metric label="Checkpoints" value={replay.checkpoints?.length??0}/></dl><details open><summary>Event trace <small>{replay.events.length}</small></summary><ol>{replay.events.map(event=><li key={event.id} data-event={event.type}><time dateTime={new Date(event.at).toISOString()}>{new Date(event.at).toLocaleTimeString()}</time><div><b>{event.type}</b><p>{event.detail}</p>{event.data!==undefined&&<pre>{renderData(event.data)}</pre>}</div></li>)}</ol></details><details><summary>Input and output</summary><h3>Input</h3><pre>{renderData(replay.run.validatedInput??replay.run.input)}</pre><h3>Output</h3><pre>{renderData(replay.run.output)}</pre></details><details><summary>Checkpoints <small>{replay.checkpoints?.length??0}</small></summary>{replay.checkpoints?.length?<ol>{replay.checkpoints.map(item=><li key={item.id}><b>{item.key}</b><small> sequence {item.sequence}</small><pre>{renderData(item.state)}</pre></li>)}</ol>:<p>No checkpoints recorded.</p>}</details></section>
+}
+function Metric({label,value}:{label:string;value:ReactNode}){return <div><dt>{label}</dt><dd>{value}</dd></div>}
+function defaultData(data:unknown){try{return JSON.stringify(data,null,2)}catch{return String(data)}}
+function numberFrom(data:unknown,key:string){const value=data&&typeof data==='object'?(data as Record<string,unknown>)[key]:0;return typeof value==='number'?value:0}

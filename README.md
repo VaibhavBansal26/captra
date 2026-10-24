@@ -321,6 +321,7 @@ await worker.runOnce()
 - `@captra-ai/postgres` — durable run, event, and multi-level memory storage
 - `@captra-ai/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming
 - `@captra-ai/react` — hooks and safe capability-view rendering
+- `@captra-ai/devtools` — unstyled run, event, checkpoint, and agent-metric inspection
 - `@captra-ai/server` — Web Standard backend handler and Node HTTP adapter
 - `@captra-ai/cli` — create, dev, build, test, and inspect commands
 - `create-captra` — project scaffolding

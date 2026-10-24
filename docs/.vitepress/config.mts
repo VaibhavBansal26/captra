@@ -38,10 +38,13 @@ export default defineConfig({
           {text:'Tools, hooks & plugins',link:'/reference/extensions'},
           {text:'State & memory',link:'/state-and-memory'},
           {text:'Runtime & durability',link:'/reference/runtime'},
+          {text:'Devtools',link:'/reference/devtools'},
           {text:'React & generated UI',link:'/reference/react'},
         ]},
         {text:'Build and ship',items:[
           {text:'Backend & deployment',link:'/deployment'},
+          {text:'Security',link:'/security'},
+          {text:'Upgrades & migrations',link:'/migrations'},
           {text:'Integrations',link:'/integrations'},
           {text:'CLI',link:'/reference/cli'},
           {text:'Package map',link:'/reference/packages'},

@@ -2,8 +2,15 @@ import { CAPTRA_PROTOCOL_VERSION, compileManifest, type CapabilityResult, type R
 
 export type AuthResolver=(request:Request)=>Promise<{tenantId:string;userId:string;projectId:string;sessionId?:string}>
 export type CorsOptions={origins:'*'|readonly string[];methods?:readonly string[];headers?:readonly string[];credentials?:boolean;maxAge?:number}
-export type CaptraHandlerOptions={auth:AuthResolver;queue?:WorkQueue;basePath?:string;maxBodyBytes?:number;cors?:CorsOptions}
+export type RateLimitResult={allowed:boolean;limit:number;remaining:number;resetAt:number}
+export interface RateLimitAdapter{consume(key:string,options:{limit:number;windowMs:number;now:number}):Promise<RateLimitResult>}
+export type RateLimitOptions={limit:number;windowMs:number;adapter?:RateLimitAdapter;key?:(request:Request,identity:Awaited<ReturnType<AuthResolver>>)=>string}
+export type CaptraHandlerOptions={auth:AuthResolver;queue?:WorkQueue;basePath?:string;maxBodyBytes?:number;cors?:CorsOptions;rateLimit?:RateLimitOptions}
 export class CaptraHttpError extends Error{constructor(readonly status:number,readonly code:string,message:string){super(message);this.name='CaptraHttpError'}}
+export class InMemoryRateLimitAdapter implements RateLimitAdapter{
+  readonly #windows=new Map<string,{count:number;resetAt:number}>()
+  async consume(key:string,{limit,windowMs,now}:{limit:number;windowMs:number;now:number}):Promise<RateLimitResult>{const existing=this.#windows.get(key),window=!existing||existing.resetAt<=now?{count:0,resetAt:now+windowMs}:existing;window.count++;this.#windows.set(key,window);return {allowed:window.count<=limit,limit,remaining:Math.max(0,limit-window.count),resetAt:window.resetAt}}
+}
 export type FetchHandler=(request:Request)=>Response|Promise<Response>
 export type NextRoute={GET:FetchHandler;POST:FetchHandler;OPTIONS:FetchHandler}
 export function createNextRoute(handler:FetchHandler):NextRoute{return Object.freeze({GET:handler,POST:handler,OPTIONS:handler})}
@@ -11,8 +18,9 @@ export type HonoContext={req:{raw:Request}}
 export function createHonoHandler(handler:FetchHandler){return (context:HonoContext)=>handler(context.req.raw)}
 
 export function createCaptraHandler(runtime:Runtime,options:CaptraHandlerOptions){
-  const basePath=normalizeBasePath(options.basePath),maxBodyBytes=options.maxBodyBytes??1_000_000
+  const basePath=normalizeBasePath(options.basePath),maxBodyBytes=options.maxBodyBytes??1_000_000,rateLimitAdapter=options.rateLimit?.adapter??new InMemoryRateLimitAdapter()
   if(maxBodyBytes<=0)throw new Error('maxBodyBytes must be positive')
+  if(options.rateLimit&&(options.rateLimit.limit<=0||!Number.isSafeInteger(options.rateLimit.limit)||options.rateLimit.windowMs<=0||!Number.isFinite(options.rateLimit.windowMs)))throw new Error('Rate limit and window must be positive')
   if(options.cors?.origins==='*'&&options.cors.credentials)throw new Error('CORS wildcard origins cannot be combined with credentials')
   return async(request:Request):Promise<Response>=>{
     const requestId=request.headers.get('x-request-id')??crypto.randomUUID(),origin=request.headers.get('origin')
@@ -25,6 +33,7 @@ export function createCaptraHandler(runtime:Runtime,options:CaptraHandlerOptions
       if(request.method==='GET'&&route==='/manifest')return decorate(json(compileManifest(runtime.app)),requestId,origin,options.cors)
       let identity:Awaited<ReturnType<AuthResolver>>
       try{identity=await options.auth(request)}catch(error){throw new CaptraHttpError(401,'unauthorized',error instanceof Error?error.message:'Authentication failed')}
+      if(options.rateLimit){const key=options.rateLimit.key?.(request,identity)??`${identity.tenantId}:${identity.userId}`,decision=await rateLimitAdapter.consume(key,{limit:options.rateLimit.limit,windowMs:options.rateLimit.windowMs,now:Date.now()});if(!decision.allowed){const response=json({error:'Rate limit exceeded',code:'rate_limited',requestId},429);response.headers.set('retry-after',String(Math.max(1,Math.ceil((decision.resetAt-Date.now())/1000))));response.headers.set('ratelimit-limit',String(decision.limit));response.headers.set('ratelimit-remaining',String(decision.remaining));response.headers.set('ratelimit-reset',String(Math.ceil(decision.resetAt/1000)));return decorate(response,requestId,origin,options.cors)}}
       if(request.method==='POST'&&route==='/runs/queue'){if(!options.queue)throw new CaptraHttpError(501,'queue_unavailable','Background queue is not configured');const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string;maxAttempts?:number;availableAt?:number}>(request,maxBodyBytes);const {maxAttempts,availableAt,...run}=body;return decorate(json(await runtime.enqueue({...run,identity},options.queue,{maxAttempts,availableAt}),202),requestId,origin,options.cors)}
       if(request.method==='POST'&&route==='/runs/stream'){const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string}>(request,maxBodyBytes);return decorate(streamRun(runtime,{...body,identity}),requestId,origin,options.cors)}
       if(request.method==='POST'&&route==='/runs'){const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string}>(request,maxBodyBytes);return decorate(json(toRemoteResult(await runtime.execute({...body,identity})),202),requestId,origin,options.cors)}

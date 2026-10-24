@@ -1,5 +1,17 @@
 # captra
 
+## 0.5.0
+
+### Minor Changes
+
+- Add the first Captra 0.5 developer-preview slice: authenticated request rate limiting, the `captra/devtools` run inspector, and a generated Hello AI World agent with demo and OpenAI modes.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/devtools@0.5.0
+  - @captra-ai/server@0.5.0
+
 ## 0.4.2
 
 ### Patch Changes
