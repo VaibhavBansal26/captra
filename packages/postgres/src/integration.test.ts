@@ -1,6 +1,7 @@
 import { afterAll,beforeAll,describe,expect,it } from 'vitest'
 import { Pool } from 'pg'
-import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresMemoryStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresWorkQueue,type SqlClient } from './index.js'
+import { StateConflictError,StateLeaseError } from '@captra-ai/state'
+import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresMemoryStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresSharedStateAdapter,PostgresWorkQueue,type SqlClient } from './index.js'
 
 const connectionString=process.env.CAPTRA_POSTGRES_URL
 const suite=connectionString?describe:describe.skip
@@ -49,5 +50,26 @@ suite('PostgreSQL integration',()=>{
     const queue=new PostgresWorkQueue(client);await queue.enqueue({runId:run.id,maxAttempts:3})
     const claims=await Promise.all(['worker-a','worker-b'].map(worker=>queue.claim(worker,30_000))),leased=claims.filter(Boolean)
     expect(leased).toHaveLength(1);expect(await queue.heartbeat(leased[0]!.id,leased[0]!.leasedBy!,30_000)).toBe(true);expect(await queue.ack(leased[0]!.id,leased[0]!.leasedBy!)).toBe(true);expect(await queue.claim('worker-c',30_000)).toBeUndefined()
+  })
+
+  it('allows only one concurrent versioned state commit and preserves tenant isolation',async()=>{
+    const acme=new PostgresSharedStateAdapter(client,'acme-state'),other=new PostgresSharedStateAdapter(client,'other-state'),key=['inventory','sku-1']
+    const results=await Promise.allSettled(Array.from({length:8},(_,value)=>acme.commit(key,{value},{expectedVersion:0,actor:`agent-${value}`})))
+    expect(results.filter(result=>result.status==='fulfilled')).toHaveLength(1)
+    expect(results.filter(result=>result.status==='rejected').every(result=>result.reason instanceof StateConflictError)).toBe(true)
+    expect((await acme.read<{value:number}>(key)).version).toBe(1)
+    expect(await other.read(key)).toMatchObject({value:undefined,version:0})
+    const history=await acme.history(key);expect(history.filter(event=>event.type==='state.committed')).toHaveLength(1);expect(history.filter(event=>event.type==='state.conflict')).toHaveLength(7)
+  })
+
+  it('fences an expired lease after another agent takes ownership',async()=>{
+    const state=new PostgresSharedStateAdapter(client,'lease-state'),key=['order','o1'],expired=await state.acquire(key,{owner:'agent-old',ttlMs:20})
+    await new Promise(resolve=>setTimeout(resolve,30))
+    const active=await state.acquire(key,{owner:'agent-new',ttlMs:5_000});expect(active.token).toBeGreaterThan(expired.token)
+    await expect(state.commit(key,{status:'old'},{expectedVersion:0,actor:'agent-old',lease:expired})).rejects.toBeInstanceOf(StateLeaseError)
+    await state.commit(key,{status:'allocated'},{expectedVersion:0,actor:'agent-new',lease:active})
+    await state.release(active)
+    expect(await state.read(key)).toMatchObject({value:{status:'allocated'},version:1})
+    expect((await state.history(key)).map(event=>event.type)).toEqual(['lease.acquired','lease.acquired','state.committed','lease.released'])
   })
 })

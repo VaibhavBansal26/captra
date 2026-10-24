@@ -62,7 +62,7 @@ export class PostgresSharedStateAdapter implements SharedStateAdapter{
   constructor(readonly client:SqlClient,readonly tenantId:string){if(!tenantId)throw new Error('Postgres shared state requires tenantId')}
   async read<T>(key:StateKey):Promise<SharedStateSnapshot<T>>{const result=await this.client.query<StateRow>('SELECT key,value,has_value,version,fence,lease_owner,lease_until,updated_at FROM captra_shared_state WHERE tenant_id=$1 AND key_hash=$2',[this.tenantId,hashStateKey(key)]);return result.rows[0]?stateFrom<T>(result.rows[0]):{key,value:undefined,version:0,updatedAt:0}}
   async commit<T>(key:StateKey,value:T,options:CommitOptions):Promise<SharedStateSnapshot<T>>{const lease=options.lease,hash=hashStateKey(key),result=await this.client.query<StateRow>(`WITH committed AS (
-    INSERT INTO captra_shared_state (tenant_id,key_hash,key,value,has_value,version) VALUES ($1,$2,$3::jsonb,$4::jsonb,true,1)
+    INSERT INTO captra_shared_state (tenant_id,key_hash,key,value,has_value,version) SELECT $1,$2,$3::jsonb,$4::jsonb,true,1 WHERE $5=0 AND $6::bigint IS NULL
     ON CONFLICT (tenant_id,key_hash) DO UPDATE SET value=EXCLUDED.value,has_value=true,version=captra_shared_state.version+1,updated_at=now()
     WHERE captra_shared_state.version=$5 AND ($6::bigint IS NULL OR (captra_shared_state.fence=$6 AND captra_shared_state.lease_owner=$7 AND captra_shared_state.lease_until>now()))
     RETURNING *

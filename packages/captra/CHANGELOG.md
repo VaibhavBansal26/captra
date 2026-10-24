@@ -1,5 +1,13 @@
 # captra
 
+## 0.4.1
+
+### Patch Changes
+
+- Require version zero and no lease when inserting previously missing shared state, preventing stale expected versions or unvalidated lease commits from creating state. Add real PostgreSQL concurrency, tenant-isolation, lease-takeover, fencing, and audit-history coverage.
+- Updated dependencies
+  - @captra-ai/postgres@0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
