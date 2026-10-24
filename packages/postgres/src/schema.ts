@@ -64,3 +64,14 @@ CREATE TABLE IF NOT EXISTS captra_jobs (
 );
 CREATE INDEX IF NOT EXISTS captra_jobs_claim ON captra_jobs (status,available_at) WHERE status IN ('queued','leased');
 `
+
+export function postgresVectorSchema(dimensions:number){if(!Number.isInteger(dimensions)||dimensions<1||dimensions>16_000)throw new Error('Vector dimensions must be an integer between 1 and 16000');return `
+CREATE EXTENSION IF NOT EXISTS vector;
+CREATE TABLE IF NOT EXISTS captra_memory_vectors (
+  memory_id uuid PRIMARY KEY REFERENCES captra_memories(id) ON DELETE CASCADE,
+  embedding vector(${dimensions}) NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_memory_vectors_hnsw
+  ON captra_memory_vectors USING hnsw (embedding vector_cosine_ops);
+`}

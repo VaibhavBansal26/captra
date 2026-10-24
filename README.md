@@ -86,6 +86,20 @@ await memory.ingest(conversation,{tenantId,scope:'user',ownerId:userId},createMe
 
 Recall is tenant- and scope-aware, excludes expired records, ranks candidates by cosine similarity, suppresses near duplicates, and injects only selected memories into agent context.
 
+For persistent vectors across processes and workers, enable the optional `pgvector` adapter:
+
+```ts
+await migrateCaptraVectors(pool,1536)
+
+const memory=new PostgresSemanticMemoryStore(
+  pool,
+  createOpenAIEmbeddings({model:'text-embedding-3-small',dimensions:1536}),
+  {dimensions:1536,limit:12,minSimilarity:.35},
+)
+```
+
+Vector dimensions are validated before writes and searches. Similarity ranking and tenant/scope filtering execute together inside PostgreSQL.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract

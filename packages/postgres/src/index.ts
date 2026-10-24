@@ -1,10 +1,11 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CreateRun,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
-import { postgresSchema } from './schema'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
+import { postgresSchema,postgresVectorSchema } from './schema'
 
-export { postgresSchema }
+export { postgresSchema,postgresVectorSchema }
 export type SqlResult<Row=Record<string,unknown>>={rows:Row[];rowCount?:number|null}
 export interface SqlClient { query<Row=Record<string,unknown>>(text:string,values?:readonly unknown[]):Promise<SqlResult<Row>> }
 export async function migrateCaptra(client:SqlClient){await client.query(postgresSchema)}
+export async function migrateCaptraVectors(client:SqlClient,dimensions:number){await client.query(postgresVectorSchema(dimensions))}
 
 type RunRow={id:string;app:string;app_version:string;capability:string;status:RunRecord['status'];tenant_id:string;user_id:string;project_id:string;session_id?:string;input:unknown;validated_input?:unknown;output?:unknown;approval?:RunRecord['approval'];error?:string;idempotency_key?:string;created_at:Date|string;updated_at:Date|string}
 type EventRow={id:string;run_id:string;sequence:number;protocol:string;at:Date|string;type:CaptraEvent['type'];capability:string;detail:string;data?:unknown}
@@ -42,3 +43,13 @@ export class PostgresWorkQueue implements WorkQueue{
   async fail(id:string,workerId:string,error:string){const result=await this.client.query(`UPDATE captra_jobs SET status='dead',error=$3,leased_by=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND leased_by=$2`,[id,workerId,error]);return (result.rowCount??0)>0}
   async heartbeat(id:string,workerId:string,leaseMs:number){const result=await this.client.query(`UPDATE captra_jobs SET lease_until=now()+($3*interval '1 millisecond'),updated_at=now() WHERE id=$1 AND leased_by=$2 AND status='leased'`,[id,workerId,leaseMs]);return (result.rowCount??0)>0}
 }
+
+export class PostgresSemanticMemoryStore implements MemoryAdapter{
+  readonly base:PostgresMemoryStore
+  constructor(readonly client:SqlClient,readonly embeddings:EmbeddingAdapter,readonly options:{dimensions:number;limit?:number;minSimilarity?:number;deduplicateSimilarity?:number}){this.base=new PostgresMemoryStore(client)}
+  async remember(record:Omit<MemoryRecord,'id'|'createdAt'>){if(!record.tenantId)throw new Error('Postgres memory requires tenantId');const [embedding]=await this.embeddings.embed([record.content]);this.#validate(embedding);const duplicate=await this.client.query<MemoryRow>(`SELECT m.* FROM captra_memories m JOIN captra_memory_vectors v ON v.memory_id=m.id WHERE m.tenant_id=$1 AND m.scope=$2 AND m.owner_id=$3 AND m.type=$4 AND (m.expires_at IS NULL OR m.expires_at>now()) AND 1-(v.embedding <=> $5::vector)>=$6 ORDER BY v.embedding <=> $5::vector LIMIT 1`,[record.tenantId,record.scope,record.ownerId,record.type,vectorLiteral(embedding),this.options.deduplicateSimilarity??.98]);if(duplicate.rows[0])return memoryFrom(duplicate.rows[0]);const saved=await this.base.remember(record);await this.client.query('INSERT INTO captra_memory_vectors (memory_id,embedding) VALUES ($1,$2::vector)',[saved.id,vectorLiteral(embedding)]);return saved}
+  async recall(scopes:readonly MemoryScope[],identity:MemoryIdentity,options:MemoryRecallOptions={}){if(!options.query)return this.base.recall(scopes,identity,{...options,limit:options.limit??this.options.limit});if(!identity.tenantId||!scopes.length)return [];const [embedding]=await this.embeddings.embed([options.query]);this.#validate(embedding);const owners=scopes.map(scope=>scope==='organization'?identity.tenantId:scope==='user'?identity.userId:scope==='project'?identity.projectId:scope==='session'?identity.sessionId:identity.taskId??identity.runId),pairs=scopes.map((scope,index)=>`(m.scope=$${index*2+2} AND m.owner_id=$${index*2+3})`).join(' OR '),values:unknown[]=[identity.tenantId];scopes.forEach((scope,index)=>values.push(scope,owners[index]??'__none__'));const vectorIndex=values.length+1,confidenceIndex=vectorIndex+1,similarityIndex=vectorIndex+2,limitIndex=vectorIndex+3;values.push(vectorLiteral(embedding),options.minConfidence??0,this.options.minSimilarity??0,options.limit??this.options.limit??20);const result=await this.client.query<MemoryRow>(`SELECT m.* FROM captra_memories m JOIN captra_memory_vectors v ON v.memory_id=m.id WHERE m.tenant_id=$1 AND (${pairs}) AND (m.expires_at IS NULL OR m.expires_at>now()) AND m.confidence>=$${confidenceIndex} AND 1-(v.embedding <=> $${vectorIndex}::vector)>=$${similarityIndex} ORDER BY v.embedding <=> $${vectorIndex}::vector,m.confidence DESC LIMIT $${limitIndex}`,values);return result.rows.map(memoryFrom)}
+  forget(id:string,identity:MemoryIdentity){return this.base.forget(id,identity)}
+  #validate(vector:readonly number[]){if(vector.length!==this.options.dimensions)throw new Error(`Expected ${this.options.dimensions} embedding dimensions, received ${vector.length}`);if(vector.some(value=>!Number.isFinite(value)))throw new Error('Embedding contains a non-finite number')}
+}
+function vectorLiteral(vector:readonly number[]){return `[${vector.join(',')}]`}
