@@ -12,6 +12,7 @@ export function createCaptraClient(options:CaptraClientOptions){
     enqueue:(capability:string,input:unknown,options:{idempotencyKey?:string;maxAttempts?:number;availableAt?:number}={})=>call('/runs/queue',{method:'POST',body:JSON.stringify({capability,input,...options})}) as Promise<RunRecord>,
     run:(id:string)=>call(`/runs/${encodeURIComponent(id)}`) as Promise<RunRecord>,
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
+    replay:(id:string)=>call(`/runs/${encodeURIComponent(id)}/replay`) as Promise<{run:RunRecord;events:CaptraEvent[];checkpoints:Array<{id:string;runId:string;key:string;sequence:number;state:unknown;createdAt:number}>}>,
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<CapabilityResult>,
     reject:(id:string)=>call(`/runs/${encodeURIComponent(id)}/reject`,{method:'POST'}) as Promise<CapabilityResult>,
     cancel:(id:string)=>call(`/runs/${encodeURIComponent(id)}/cancel`,{method:'POST'}) as Promise<RunRecord>,

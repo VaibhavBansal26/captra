@@ -35,6 +35,17 @@ CREATE TABLE IF NOT EXISTS captra_events (
   UNIQUE(run_id,sequence)
 );
 
+CREATE TABLE IF NOT EXISTS captra_checkpoints (
+  id uuid PRIMARY KEY,
+  run_id uuid NOT NULL REFERENCES captra_runs(id) ON DELETE CASCADE,
+  key text NOT NULL,
+  sequence integer NOT NULL,
+  state jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(run_id,sequence)
+);
+CREATE INDEX IF NOT EXISTS captra_checkpoints_lookup ON captra_checkpoints (run_id,key,sequence DESC);
+
 CREATE TABLE IF NOT EXISTS captra_memories (
   id uuid PRIMARY KEY,
   tenant_id text NOT NULL,

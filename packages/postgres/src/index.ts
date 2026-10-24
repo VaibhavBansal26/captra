@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CheckpointRecord,type CheckpointStore,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
 import { postgresSchema,postgresVectorSchema } from './schema'
 
 export { postgresSchema,postgresVectorSchema }
@@ -11,11 +11,13 @@ type RunRow={id:string;app:string;app_version:string;capability:string;status:Ru
 type EventRow={id:string;run_id:string;sequence:number;protocol:string;at:Date|string;type:CaptraEvent['type'];capability:string;detail:string;data?:unknown}
 type MemoryRow={id:string;tenant_id:string;scope:MemoryScope;owner_id:string;type:MemoryRecord['type'];content:string;confidence:number;created_at:Date|string;expires_at?:Date|string}
 type JobRow={id:string;run_id:string;attempts:number;max_attempts:number;available_at:Date|string;lease_until?:Date|string;leased_by?:string}
+type CheckpointRow={id:string;run_id:string;key:string;sequence:number;state:unknown;created_at:Date|string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
 const memoryFrom=(row:MemoryRow):MemoryRecord=>({id:row.id,tenantId:row.tenant_id,scope:row.scope,ownerId:row.owner_id,type:row.type,content:row.content,confidence:row.confidence,createdAt:millis(row.created_at),expiresAt:row.expires_at?millis(row.expires_at):undefined})
 const jobFrom=(row:JobRow):WorkItem=>({id:row.id,runId:row.run_id,attempts:row.attempts,maxAttempts:row.max_attempts,availableAt:millis(row.available_at),leaseUntil:row.lease_until?millis(row.lease_until):undefined,leasedBy:row.leased_by})
+const checkpointFrom=(row:CheckpointRow):CheckpointRecord=>({id:row.id,runId:row.run_id,key:row.key,sequence:row.sequence,state:row.state,createdAt:millis(row.created_at)})
 
 export class PostgresRunStore implements RunStore{
   constructor(readonly client:SqlClient){}
@@ -32,6 +34,13 @@ export class PostgresMemoryStore implements MemoryAdapter{
   async remember(record:Omit<MemoryRecord,'id'|'createdAt'>){if(!record.tenantId)throw new Error('Postgres memory requires tenantId');const id=crypto.randomUUID();const result=await this.client.query<MemoryRow>('INSERT INTO captra_memories (id,tenant_id,scope,owner_id,type,content,confidence,expires_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *',[id,record.tenantId,record.scope,record.ownerId,record.type,record.content,record.confidence,record.expiresAt?new Date(record.expiresAt):null]);return memoryFrom(result.rows[0])}
   async recall(scopes:readonly MemoryScope[],identity:MemoryIdentity,options:MemoryRecallOptions={}){if(!identity.tenantId||!scopes.length)return [];const owners=scopes.map(scope=>scope==='organization'?identity.tenantId:scope==='user'?identity.userId:scope==='project'?identity.projectId:scope==='session'?identity.sessionId:identity.taskId??identity.runId);const pairs=scopes.map((scope,index)=>`(scope=$${index*2+2} AND owner_id=$${index*2+3})`).join(' OR ');const values:unknown[]=[identity.tenantId];scopes.forEach((scope,index)=>values.push(scope,owners[index]??'__none__'));const queryIndex=values.length+1,confidenceIndex=queryIndex+1,limitIndex=queryIndex+2;values.push(options.query??null,options.minConfidence??0,options.limit??100);const result=await this.client.query<MemoryRow>(`SELECT * FROM captra_memories WHERE tenant_id=$1 AND (${pairs}) AND (expires_at IS NULL OR expires_at>now()) AND confidence>=$${confidenceIndex} AND ($${queryIndex}::text IS NULL OR to_tsvector('simple',content) @@ plainto_tsquery('simple',$${queryIndex})) ORDER BY CASE WHEN $${queryIndex}::text IS NULL THEN 0 ELSE ts_rank(to_tsvector('simple',content),plainto_tsquery('simple',$${queryIndex})) END DESC,confidence DESC,created_at DESC LIMIT $${limitIndex}`,values);return result.rows.map(memoryFrom)}
   async forget(id:string,identity:MemoryIdentity){if(!identity.tenantId)return false;const result=await this.client.query('DELETE FROM captra_memories WHERE id=$1 AND tenant_id=$2',[id,identity.tenantId]);return (result.rowCount??0)>0}
+}
+
+export class PostgresCheckpointStore implements CheckpointStore{
+  constructor(readonly client:SqlClient){}
+  async save(runId:string,key:string,state:unknown){const result=await this.client.query<CheckpointRow>(`WITH locked AS (SELECT id FROM captra_runs WHERE id=$2 FOR UPDATE), next AS (SELECT COALESCE((SELECT MAX(sequence) FROM captra_checkpoints WHERE run_id=$2),0)+1 AS sequence FROM locked) INSERT INTO captra_checkpoints (id,run_id,key,sequence,state) SELECT $1,$2,$3,next.sequence,$4::jsonb FROM next RETURNING *`,[crypto.randomUUID(),runId,key,JSON.stringify(state)]);if(!result.rows[0])throw new Error(`Unknown run: ${runId}`);return checkpointFrom(result.rows[0])}
+  async load(runId:string,key:string){const result=await this.client.query<CheckpointRow>('SELECT * FROM captra_checkpoints WHERE run_id=$1 AND key=$2 ORDER BY sequence DESC LIMIT 1',[runId,key]);return result.rows[0]?checkpointFrom(result.rows[0]):undefined}
+  async list(runId:string){const result=await this.client.query<CheckpointRow>('SELECT * FROM captra_checkpoints WHERE run_id=$1 ORDER BY sequence',[runId]);return result.rows.map(checkpointFrom)}
 }
 
 export class PostgresWorkQueue implements WorkQueue{

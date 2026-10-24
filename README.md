@@ -100,6 +100,21 @@ const memory=new PostgresSemanticMemoryStore(
 
 Vector dimensions are validated before writes and searches. Similarity ranking and tenant/scope filtering execute together inside PostgreSQL.
 
+## Resumable agent checkpoints
+
+Agent state is checkpointed before and after every tool call. A retried worker restores the conversation, provider continuation state, budgets, and pending call index:
+
+```ts
+const runtime=createRuntime(app,{
+  runs:new PostgresRunStore(pool),
+  checkpoints:new PostgresCheckpointStore(pool),
+})
+
+const replay=await runtime.replay(runId)
+```
+
+Completed tool calls are not repeated after recovery. `replay()` returns the durable run, ordered event trace, and checkpoint history for debugging or deterministic inspection.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract

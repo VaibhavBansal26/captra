@@ -1,7 +1,7 @@
 import { toJSONSchema,type ZodType } from 'zod'
 import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core'
 import type { MemoryScope } from './memory'
-import type { ModelAdapter,ModelMessage } from './models'
+import type { ModelAdapter,ModelMessage,ModelToolCall } from './models'
 import type { Tool } from './tools'
 
 export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number}
@@ -20,30 +20,38 @@ export function agent<Input,Output>(definition:AgentDefinition<Input,Output>):Ca
 async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,input:Input,context:RuntimeContext,allowed:Set<string>,tools:{name:string;description:string;inputSchema:unknown}[]):Promise<Output>{
   const maxSteps=definition.budget?.maxSteps??8,maxToolCalls=definition.budget?.maxToolCalls??16,maxTokens=definition.budget?.maxTokens??50_000
   const memory=context.memories.length?`\nRelevant scoped memory:\n${context.memories.map(item=>`- [${item.type}] ${item.content}`).join('\n')}`:''
-  const messages:ModelMessage[]=[{role:'system',content:`${definition.instructions}${memory}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}]
-  let toolCalls=0,tokens=0,providerState:unknown
-  for(let step=1;step<=maxSteps;step++){
-    await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${step}`,data:{step,maxSteps,toolCalls,tokens}})
-    const response=await definition.model.generate({messages,tools,signal:context.signal,temperature:definition.temperature,providerState})
-    providerState=response.providerState
-    tokens+=(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0)
-    if(tokens>maxTokens)throw new Error(`Agent token budget exceeded (${maxTokens})`)
-    if(response.toolCalls?.length){
-      if(toolCalls+response.toolCalls.length>maxToolCalls)throw new Error(`Agent tool-call budget exceeded (${maxToolCalls})`)
-      messages.push({role:'assistant',content:response.text,toolCalls:response.toolCalls})
-      for(const call of response.toolCalls){
+  const initial:AgentState={version:1,step:1,messages:[{role:'system',content:`${definition.instructions}${memory}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}],toolCalls:0,tokens:0}
+  const key=`agent/${definition.name}/state`,restored=await context.checkpoints.load(key),state=isAgentState(restored?.state)?restored.state:initial
+  for(;;){
+    if(state.pending){
+      for(let index=state.pending.next;index<state.pending.calls.length;index++){
+        const call=state.pending.calls[index]
         if(!allowed.has(call.name))throw new Error(`Agent attempted unavailable tool: ${call.name}`)
-        await context.emit({type:'agent.tool.selected',capability:definition.name,detail:call.name,data:{step,toolCallId:call.id}})
-        const value=await context.tools.call(call.name,call.input);toolCalls++
-        messages.push({role:'tool',name:call.name,toolCallId:call.id,content:JSON.stringify(value)})
+        await context.emit({type:'agent.tool.selected',capability:definition.name,detail:call.name,data:{step:state.step,toolCallId:call.id}})
+        const value=await context.tools.call(call.name,call.input);state.toolCalls++
+        state.messages.push({role:'tool',name:call.name,toolCallId:call.id,content:JSON.stringify(value)});state.pending.next=index+1
+        await context.checkpoints.save(key,state)
       }
+      state.pending=undefined;state.step++;await context.checkpoints.save(key,state);continue
+    }
+    if(state.step>maxSteps)throw new Error(`Agent step budget exceeded (${maxSteps})`)
+    await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${state.step}`,data:{step:state.step,maxSteps,toolCalls:state.toolCalls,tokens:state.tokens}})
+    const response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,providerState:state.providerState})
+    state.providerState=response.providerState
+    state.tokens+=(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0)
+    if(state.tokens>maxTokens)throw new Error(`Agent token budget exceeded (${maxTokens})`)
+    if(response.toolCalls?.length){
+      if(state.toolCalls+response.toolCalls.length>maxToolCalls)throw new Error(`Agent tool-call budget exceeded (${maxToolCalls})`)
+      state.messages.push({role:'assistant',content:response.text,toolCalls:response.toolCalls});state.pending={calls:[...response.toolCalls],next:0};await context.checkpoints.save(key,state)
       continue
     }
     let candidate:unknown
     try{candidate=JSON.parse(response.text)}catch{throw new Error('Agent returned invalid JSON output')}
     const output=definition.output.parse(candidate)
-    await context.emit({type:'agent.completed',capability:definition.name,detail:`Completed in ${step} steps`,data:{steps:step,toolCalls,tokens,model:response.model}})
+    await context.emit({type:'agent.completed',capability:definition.name,detail:`Completed in ${state.step} steps`,data:{steps:state.step,toolCalls:state.toolCalls,tokens:state.tokens,model:response.model}})
     return output
   }
-  throw new Error(`Agent step budget exceeded (${maxSteps})`)
 }
+
+type AgentState={version:1;step:number;messages:ModelMessage[];toolCalls:number;tokens:number;providerState?:unknown;pending?:{calls:ModelToolCall[];next:number}}
+function isAgentState(value:unknown):value is AgentState{const state=value as Partial<AgentState>|undefined;return !!state&&state.version===1&&typeof state.step==='number'&&Array.isArray(state.messages)&&typeof state.toolCalls==='number'&&typeof state.tokens==='number'}

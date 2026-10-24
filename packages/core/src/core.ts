@@ -4,10 +4,11 @@ import { InMemoryRunStore, type RunStore } from './stores'
 import type { CaptraEvent, RunRecord } from './protocol'
 import { createToolRunner, type Tool, type ToolRunner } from './tools'
 import type { WorkQueue } from './queue'
+import { InMemoryCheckpointStore,type CheckpointStore,type RunCheckpoints } from './checkpoints'
 
 export type ApprovalRequest={capability:string;summary:string;input:unknown}
 export type ExecutionIdentity={tenantId:string;userId:string;projectId:string;sessionId?:string}
-export type RuntimeContext=ExecutionIdentity&{runId:string;memory:MemoryAdapter;memories:readonly MemoryRecord[];tools:ToolRunner;signal?:AbortSignal;emit:(event:Omit<CaptraEvent,'id'|'protocol'|'runId'|'sequence'|'at'>)=>Promise<void>}
+export type RuntimeContext=ExecutionIdentity&{runId:string;memory:MemoryAdapter;memories:readonly MemoryRecord[];tools:ToolRunner;checkpoints:RunCheckpoints;signal?:AbortSignal;emit:(event:Omit<CaptraEvent,'id'|'protocol'|'runId'|'sequence'|'at'>)=>Promise<void>}
 export type CapabilityViewProps<Output>={value:Output;capability:string}
 export type ViewReference<Output=unknown>={readonly name:string;readonly component?:unknown;readonly __output?:Output}
 export function view<Output>(name:string,component?:unknown):ViewReference<Output>{return Object.freeze({name,component})}
@@ -37,15 +38,16 @@ export function defineApp<const C extends readonly Capability<any,any>[]>(defini
 
 export type RunRequest={capability:string;input:unknown;identity:ExecutionIdentity;idempotencyKey?:string;onEvent?:(event:CaptraEvent)=>void|Promise<void>}
 export type CapabilityResult={run:RunRecord;capability:Capability<unknown,unknown>;value:unknown;trace:CaptraEvent[]}
-export type RuntimeOptions={memory?:MemoryAdapter;runs?:RunStore;authorize?:(identity:ExecutionIdentity,permissions:readonly string[])=>Promise<boolean>|boolean;signal?:AbortSignal}
+export type RuntimeOptions={memory?:MemoryAdapter;runs?:RunStore;checkpoints?:CheckpointStore;authorize?:(identity:ExecutionIdentity,permissions:readonly string[])=>Promise<boolean>|boolean;signal?:AbortSignal}
 export function createRuntime(app:AgentApp,options:RuntimeOptions|MemoryStore={}){
   const normalized=options instanceof MemoryStore?{memory:options}:options
-  const memory=normalized.memory??new MemoryStore(),runs=normalized.runs??new InMemoryRunStore(),byName=new Map(app.capabilities.map(c=>[c.name,c]))
+  const memory=normalized.memory??new MemoryStore(),runs=normalized.runs??new InMemoryRunStore(),checkpoints=normalized.checkpoints??new InMemoryCheckpointStore(),byName=new Map(app.capabilities.map(c=>[c.name,c]))
   const resultFor=async(run:RunRecord,capability:Capability<unknown,unknown>):Promise<CapabilityResult>=>({run,capability,value:run.output,trace:await runs.events(run.id)})
   async function continueRun(run:RunRecord,capability:Capability<unknown,unknown>):Promise<CapabilityResult>{
     const emit:RuntimeContext['emit']=async event=>{const saved=await runs.appendEvent(run.id,event);await runRequestEvents.get(run.id)?.(saved)}
     const context={} as RuntimeContext
-    Object.assign(context,{...run.identity,runId:run.id,memory,memories:[],signal:normalized.signal,emit})
+    const scopedCheckpoints:RunCheckpoints={save:async(key,state)=>{const saved=await checkpoints.save(run.id,key,state);await emit({type:'checkpoint.saved',capability:capability.name,detail:key,data:{sequence:saved.sequence}});return saved},load:async key=>{const saved=await checkpoints.load(run.id,key);if(saved)await emit({type:'checkpoint.restored',capability:capability.name,detail:key,data:{sequence:saved.sequence}});return saved},list:()=>checkpoints.list(run.id)}
+    Object.assign(context,{...run.identity,runId:run.id,memory,memories:[],checkpoints:scopedCheckpoints,signal:normalized.signal,emit})
     Object.assign(context,{tools:createToolRunner(app.tools,context,async permissions=>!normalized.authorize||await normalized.authorize(run.identity,permissions))})
     try{
       await emit({type:'run.started',capability:capability.name,detail:'Validated execution started'})
@@ -64,7 +66,8 @@ export function createRuntime(app:AgentApp,options:RuntimeOptions|MemoryStore={}
   async function enqueue(request:RunRequest,queue:WorkQueue,options:{maxAttempts?:number;availableAt?:number}={}){const capability=byName.get(request.capability);if(!capability)throw new Error(`Unknown capability: ${request.capability}`);if(normalized.authorize&&!(await normalized.authorize(request.identity,capability.permissions)))throw new Error(`Not authorized to run ${capability.name}`);if(request.idempotencyKey){const existing=await runs.findByIdempotencyKey(request.identity.tenantId,request.idempotencyKey);if(existing)return existing}capability.input.parse(request.input);const run=await runs.create({app:app.name,appVersion:app.version,capability:capability.name,input:request.input,identity:request.identity,idempotencyKey:request.idempotencyKey});if(run.status!=='created')return run;await runs.update(run.id,{status:'queued'});await runs.appendEvent(run.id,{type:'run.queued',capability:capability.name,detail:'Queued for background execution'});try{await queue.enqueue({runId:run.id,...options})}catch(error){const message=error instanceof Error?error.message:'Queue operation failed';await runs.update(run.id,{status:'failed',error:message});await runs.appendEvent(run.id,{type:'run.failed',capability:capability.name,detail:message});throw error}return (await runs.get(run.id))!}
   async function resume(runId:string){const run=await runs.get(runId);if(!run)throw new Error(`Unknown run: ${runId}`);const capability=byName.get(run.capability);if(!capability)throw new Error(`Unknown capability: ${run.capability}`);if(['completed','cancelled','waiting_for_approval'].includes(run.status))return resultFor(run,capability);return continueRun(run,capability)}
   async function cancel(runId:string){const run=await runs.get(runId);if(!run)throw new Error(`Unknown run: ${runId}`);if(['completed','failed','cancelled'].includes(run.status))throw new Error(`Run ${runId} cannot be cancelled`);await runs.update(runId,{status:'cancelled'});await runs.appendEvent(runId,{type:'run.cancelled',capability:run.capability,detail:'Cancelled'});return runs.get(runId)}
-  return {app,memory,runs,execute,enqueue,resume,approve,cancel,async run(name:string,input:unknown,legacy:Omit<ExecutionIdentity,'tenantId'>&{tenantId?:string;approve:(request:ApprovalRequest)=>Promise<boolean>}){let result=await execute({capability:name,input,identity:{tenantId:legacy.tenantId??'default',userId:legacy.userId,projectId:legacy.projectId}});if(result.run.status==='waiting_for_approval'){const allowed=await legacy.approve({capability:name,summary:result.capability.description,input});result=await approve(result.run.id,allowed?'approved':'rejected');if(!allowed)throw new Error('Approval rejected')}return result}}
+  async function replay(runId:string){const run=await runs.get(runId);if(!run)throw new Error(`Unknown run: ${runId}`);return {run,events:await runs.events(runId),checkpoints:await checkpoints.list(runId)}}
+  return {app,memory,runs,checkpoints,execute,enqueue,resume,replay,approve,cancel,async run(name:string,input:unknown,legacy:Omit<ExecutionIdentity,'tenantId'>&{tenantId?:string;approve:(request:ApprovalRequest)=>Promise<boolean>}){let result=await execute({capability:name,input,identity:{tenantId:legacy.tenantId??'default',userId:legacy.userId,projectId:legacy.projectId}});if(result.run.status==='waiting_for_approval'){const allowed=await legacy.approve({capability:name,summary:result.capability.description,input});result=await approve(result.run.id,allowed?'approved':'rejected');if(!allowed)throw new Error('Approval rejected')}return result}}
 }
 function safeQuery(input:unknown){const values:string[]=[];const visit=(value:unknown,depth:number)=>{if(depth>4)return;if(typeof value==='string'||typeof value==='number'||typeof value==='boolean')values.push(String(value));else if(Array.isArray(value))value.forEach(item=>visit(item,depth+1));else if(value&&typeof value==='object')Object.values(value).forEach(item=>visit(item,depth+1))};visit(input,0);return values.join(' ')||undefined}
 async function executeWithPolicy(capability:Capability<unknown,unknown>,input:unknown,context:RuntimeContext){

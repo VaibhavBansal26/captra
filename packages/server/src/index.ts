@@ -16,6 +16,8 @@ export function createCaptraHandler(runtime:Runtime,options:{auth:AuthResolver;q
       if(request.method==='POST'&&cancellation){await assertOwner(runtime,cancellation[1],identity);return json(await runtime.cancel(cancellation[1]))}
       const events=path.match(/\/runs\/([^/]+)\/events$/)
       if(request.method==='GET'&&events){await assertOwner(runtime,events[1],identity);return json(await runtime.runs.events(events[1],Number(url.searchParams.get('after')??0)))}
+      const replay=path.match(/\/runs\/([^/]+)\/replay$/)
+      if(request.method==='GET'&&replay){await assertOwner(runtime,replay[1],identity);return json(await runtime.replay(replay[1]))}
       const run=path.match(/\/runs\/([^/]+)$/)
       if(request.method==='GET'&&run){await assertOwner(runtime,run[1],identity);return json(await runtime.runs.get(run[1]))}
       return json({error:'Not found'},404)

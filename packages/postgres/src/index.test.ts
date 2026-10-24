@@ -1,5 +1,5 @@
 import { describe,expect,it } from 'vitest'
-import { migrateCaptra,migrateCaptraVectors,PostgresMemoryStore,PostgresSemanticMemoryStore,PostgresWorkQueue,postgresSchema,postgresVectorSchema,type SqlClient } from './index'
+import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresMemoryStore,PostgresSemanticMemoryStore,PostgresWorkQueue,postgresSchema,postgresVectorSchema,type SqlClient } from './index'
 
 describe('@captra/postgres',()=>{
   it('installs the durable schema',async()=>{const calls:string[]=[];const client:SqlClient={query:async text=>{calls.push(text);return {rows:[]}}};await migrateCaptra(client);expect(calls[0]).toBe(postgresSchema);expect(postgresSchema).toContain('captra_runs_idempotency');expect(postgresSchema).toContain('captra_memories_recall')})
@@ -9,4 +9,5 @@ describe('@captra/postgres',()=>{
   it('installs an explicitly dimensioned pgvector index',async()=>{let sql='';const client:SqlClient={query:async text=>{sql=text;return {rows:[]}}};await migrateCaptraVectors(client,1536);expect(sql).toBe(postgresVectorSchema(1536));expect(sql).toContain('vector(1536)');expect(()=>postgresVectorSchema(0)).toThrow('dimensions')})
   it('runs semantic recall inside tenant and scope boundaries',async()=>{let sql='',values:readonly unknown[]=[];const client:SqlClient={query:async(text,input)=>{sql=text;values=input??[];return {rows:[]}}};const memory=new PostgresSemanticMemoryStore(client,{embed:async()=>[[1,0,0]]},{dimensions:3,minSimilarity:.4});await memory.recall(['user'],{tenantId:'acme',userId:'u1',projectId:'p1'},{query:'dark theme',limit:5});expect(sql).toContain('v.embedding <=>');expect(sql).toContain('m.tenant_id=$1');expect(values).toEqual(['acme','user','u1','[1,0,0]',0,.4,5])})
   it('rejects embeddings with the wrong dimensions',async()=>{const client:SqlClient={query:async()=>({rows:[]})};const memory=new PostgresSemanticMemoryStore(client,{embed:async()=>[[1,0]]},{dimensions:3});await expect(memory.recall(['user'],{tenantId:'acme',userId:'u1',projectId:'p1'},{query:'x'})).rejects.toThrow('Expected 3')})
+  it('serializes checkpoint sequences on the run row',async()=>{let sql='';const client:SqlClient={query:async text=>{sql=text;return {rows:[{id:'c1',run_id:'r1',key:'agent/state',sequence:2,state:{step:2},created_at:new Date(1)}]}}};const checkpoints=new PostgresCheckpointStore(client);const saved=await checkpoints.save('r1','agent/state',{step:2});expect(sql).toContain('FOR UPDATE');expect(sql).toContain('MAX(sequence)');expect(saved.state).toEqual({step:2})})
 })
