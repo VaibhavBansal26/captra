@@ -6,6 +6,8 @@ Captra is a capability-first framework for type-safe, memory-aware AI applicatio
 
 It keeps the application contract small while the runtime handles validation, tools, scoped memory, authorization, approvals, durable run events, and generated UI boundaries.
 
+**Documentation:** [Start here](docs/README.md) · [Mental model](docs/concepts.md) · [State and memory](docs/state-and-memory.md) · [Deployment](docs/deployment.md) · [Roadmap](ROADMAP.md)
+
 ```bash
 npx create-captra my-app
 cd my-app
