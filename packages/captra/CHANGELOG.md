@@ -1,5 +1,19 @@
 # captra
 
+## 0.7.1
+
+### Patch Changes
+
+- Add package-specific npm READMEs with installation, usage, security notes, documentation links, and repository links. Package and public-release checks now fail when README content is missing.
+- Updated dependencies
+  - @captra-ai/core@0.5.1
+  - @captra-ai/client@0.3.1
+  - @captra-ai/server@0.6.1
+  - @captra-ai/react@0.4.1
+  - @captra-ai/state@0.4.2
+  - @captra-ai/postgres@0.5.1
+  - @captra-ai/openai@0.3.2
+
 ## 0.7.0
 
 ### Minor Changes

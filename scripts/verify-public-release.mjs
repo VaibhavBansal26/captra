@@ -46,12 +46,12 @@ async function verifyPublishedPackages(){
     lastFailures=[]
     for(const [name,manifest] of pending){
       const specifier=`${name}@${manifest.version}`
-      const result=spawnSync('npm',['view',specifier,'version','--json'],{encoding:'utf8'})
+      const result=spawnSync('npm',['view',specifier,'version','readme','--json'],{encoding:'utf8'})
       const published=result.status===0?JSON.parse(result.stdout.trim()):undefined
-      if(published===manifest.version){
+      if(published?.version===manifest.version&&typeof published.readme==='string'&&published.readme.trim()){
         console.log(`✓ public ${specifier}`)
         pending.delete(name)
-      }else lastFailures.push(`${specifier}: ${result.stderr.trim()||`received ${String(published)}`}`)
+      }else lastFailures.push(`${specifier}: ${result.stderr.trim()||'version or README is unavailable'}`)
     }
     if(pending.size>0&&attempt<propagationAttempts){
       console.log(`npm registry is still propagating ${pending.size} package(s); retrying (${attempt}/${propagationAttempts})`)

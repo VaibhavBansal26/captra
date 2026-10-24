@@ -1,5 +1,13 @@
 # create-captra
 
+## 0.5.3
+
+### Patch Changes
+
+- Add package-specific npm READMEs with installation, usage, security notes, documentation links, and repository links. Package and public-release checks now fail when README content is missing.
+- Updated dependencies
+  - @captra-ai/cli@0.5.3
+
 ## 0.5.2
 
 ### Patch Changes

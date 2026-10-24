@@ -1,5 +1,11 @@
 # @captra-ai/server
 
+## 0.6.1
+
+### Patch Changes
+
+- Add package-specific npm READMEs with installation, usage, security notes, documentation links, and repository links. Package and public-release checks now fail when README content is missing.
+
 ## 0.6.0
 
 ### Minor Changes
