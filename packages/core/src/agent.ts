@@ -1,8 +1,8 @@
 import { toJSONSchema,type ZodType } from 'zod'
-import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core'
-import type { MemoryScope } from './memory'
-import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models'
-import type { Tool } from './tools'
+import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core.js'
+import type { MemoryScope } from './memory.js'
+import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models.js'
+import type { Tool } from './tools.js'
 
 export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number}
 export type AgentDefinition<Input,Output>={

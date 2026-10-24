@@ -1,4 +1,4 @@
-import type { AgentApp } from './core'
+import type { AgentApp } from './core.js'
 
 export type Plan={capability:string;input:unknown;reason:string}
 export interface PlannerAdapter { plan(prompt:string,app:AgentApp):Promise<Plan> }

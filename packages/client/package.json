@@ -5,6 +5,9 @@
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/client" },
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
+  "main": "./dist/index.js", "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist"], "publishConfig": { "access": "public" },
+  "scripts": { "build": "tsc -p tsconfig.json" },
   "peerDependencies": { "@captra/core": "^0.1.0" }
 }

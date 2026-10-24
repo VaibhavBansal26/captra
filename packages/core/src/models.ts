@@ -1,6 +1,6 @@
 import type { ZodType } from 'zod'
-import type { AgentApp, ExecutionIdentity } from './core'
-import type { Plan, PlannerAdapter } from './planner'
+import type { AgentApp, ExecutionIdentity } from './core.js'
+import type { Plan, PlannerAdapter } from './planner.js'
 
 export type ModelMessage={role:'system'|'user'|'assistant'|'tool';content:string;name?:string;toolCallId?:string;toolCalls?:readonly ModelToolCall[]}
 export type ModelTool={name:string;description:string;inputSchema:unknown}

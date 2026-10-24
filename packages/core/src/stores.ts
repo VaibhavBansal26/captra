@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type CaptraEvent, type RunRecord } from './protocol'
+import { CAPTRA_PROTOCOL_VERSION, type CaptraEvent, type RunRecord } from './protocol.js'
 export type CreateRun=Omit<RunRecord,'id'|'status'|'createdAt'|'updatedAt'>
 export interface RunStore { create(input:CreateRun):Promise<RunRecord>; get(id:string):Promise<RunRecord|undefined>; update(id:string,patch:Partial<RunRecord>):Promise<void>; appendEvent(id:string,event:Omit<CaptraEvent,'id'|'protocol'|'runId'|'sequence'|'at'>):Promise<CaptraEvent>; events(id:string,after?:number):Promise<CaptraEvent[]>; findByIdempotencyKey(tenantId:string,key:string):Promise<RunRecord|undefined> }
 export class InMemoryRunStore implements RunStore {

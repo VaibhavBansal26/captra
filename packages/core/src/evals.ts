@@ -1,4 +1,4 @@
-import type { CapabilityResult,ExecutionIdentity,Runtime } from './core'
+import type { CapabilityResult,ExecutionIdentity,Runtime } from './core.js'
 
 export type EvaluationCase={name:string;capability:string;input:unknown;identity:ExecutionIdentity;assert?:(result:CapabilityResult)=>boolean|Promise<boolean>;tags?:readonly string[]}
 export type EvaluationResult={name:string;passed:boolean;durationMs:number;runId?:string;error?:string;tags:readonly string[]}

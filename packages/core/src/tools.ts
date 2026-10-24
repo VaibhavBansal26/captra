@@ -1,5 +1,5 @@
 import type { ZodType } from 'zod'
-import type { RuntimeContext } from './core'
+import type { RuntimeContext } from './core.js'
 
 export type ToolContext=RuntimeContext
 export type Tool<Input,Output>={

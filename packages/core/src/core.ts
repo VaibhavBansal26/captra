@@ -1,11 +1,11 @@
 import type { ZodType } from 'zod'
-import { MemoryStore, type MemoryAdapter, type MemoryRecord, type MemoryScope } from './memory'
-import { InMemoryRunStore, type RunStore } from './stores'
-import type { CaptraEvent, RunRecord } from './protocol'
-import { createToolRunner, type Tool, type ToolRunner } from './tools'
-import type { WorkQueue } from './queue'
-import { InMemoryCheckpointStore,type CheckpointStore,type RunCheckpoints } from './checkpoints'
-import { noopTelemetry,type TelemetryAdapter } from './telemetry'
+import { MemoryStore, type MemoryAdapter, type MemoryRecord, type MemoryScope } from './memory.js'
+import { InMemoryRunStore, type RunStore } from './stores.js'
+import type { CaptraEvent, RunRecord } from './protocol.js'
+import { createToolRunner, type Tool, type ToolRunner } from './tools.js'
+import type { WorkQueue } from './queue.js'
+import { InMemoryCheckpointStore,type CheckpointStore,type RunCheckpoints } from './checkpoints.js'
+import { noopTelemetry,type TelemetryAdapter } from './telemetry.js'
 
 export type ApprovalRequest={capability:string;summary:string;input:unknown}
 export type ExecutionIdentity={tenantId:string;userId:string;projectId:string;sessionId?:string}

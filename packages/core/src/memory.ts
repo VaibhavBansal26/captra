@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import type { ModelAdapter } from './models'
+import type { ModelAdapter } from './models.js'
 
 export type MemoryScope = 'organization' | 'user' | 'project' | 'session' | 'task'
 export type MemoryIdentity = { tenantId?:string; userId:string; projectId:string; sessionId?:string; taskId?:string; runId?:string }

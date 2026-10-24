@@ -195,3 +195,7 @@ captra inspect my-app
 ```
 
 The runtime is model- and backend-independent. Implement `PlannerAdapter`, `MemoryAdapter`, and `RunStore` to connect an existing agent runtime and infrastructure.
+
+## Releases
+
+Every library package is compiled to ESM JavaScript with TypeScript declarations, declaration maps, source maps, explicit export maps, and restricted npm file lists. Changesets coordinates framework versions and the release workflow opens version PRs before publishing with npm provenance. Packages are not published until the repository is configured with an npm trusted publisher or `NPM_TOKEN`.

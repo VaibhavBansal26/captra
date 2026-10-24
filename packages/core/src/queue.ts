@@ -1,4 +1,4 @@
-import type { Runtime } from './core'
+import type { Runtime } from './core.js'
 
 export type WorkItem={id:string;runId:string;attempts:number;maxAttempts:number;availableAt:number;leaseUntil?:number;leasedBy?:string}
 export interface WorkQueue{

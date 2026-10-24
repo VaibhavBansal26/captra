@@ -11,10 +11,17 @@
   "type": "module",
   "workspaces": ["packages/*", "examples/*"],
   "scripts": {
-    "test": "npm run test -w @captra/core && npm run test -w @captra/server && npm run test -w @captra/postgres && npm run test -w @captra/openai",
-    "build": "npm run build -w @captra/customer-ops",
+    "test": "npm run build:packages && npm run test -w @captra/core && npm run test -w @captra/server && npm run test -w @captra/postgres && npm run test -w @captra/openai",
+    "build": "npm run build:packages && npm run build:example",
+    "build:packages": "npm run build -w @captra/core && npm run build -w @captra/client && npm run build -w @captra/server && npm run build -w @captra/react && npm run build -w @captra/postgres && npm run build -w @captra/openai",
+    "build:example": "npm run build -w @captra/customer-ops",
+    "check:packages": "node scripts/verify-packages.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "npm run build:packages && changeset publish",
     "dev": "npm run dev -w @captra/customer-ops",
     "inspect": "node packages/cli/bin/captra.js inspect examples/customer-ops"
   },
-  "engines": { "node": ">=20" }
+  "engines": { "node": ">=20" },
+  "devDependencies": { "@changesets/cli": "^2.29.7" }
 }

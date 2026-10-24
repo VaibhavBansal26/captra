@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineTool } from './tools'
+import { defineTool } from './tools.js'
 
 export const rememberTool=defineTool({
   name:'memory.remember',description:'Save a fact, preference, decision, or working state',

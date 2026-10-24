@@ -5,5 +5,7 @@
   "license": "MIT",
   "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/cli" },
   "type": "module",
-  "bin": { "captra": "./bin/captra.js" }
+  "bin": { "captra": "./bin/captra.js" },
+  "files": ["bin"],
+  "publishConfig": { "access": "public" }
 }
