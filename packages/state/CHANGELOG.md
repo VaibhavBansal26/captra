@@ -1,5 +1,11 @@
 # @captra-ai/state
 
+## 0.4.1
+
+### Patch Changes
+
+- Reject cross-key lease substitution, malformed actors and owners, invalid versions and fencing tokens, non-finite expirations, and leases longer than five minutes across the in-memory and PostgreSQL shared-state adapters.
+
 ## 0.4.0
 
 ### Minor Changes

@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/postgres",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Durable PostgreSQL run and memory adapters for Captra.",
   "license": "MIT",
   "repository": {
@@ -28,7 +28,7 @@
     "@captra-ai/state": ">=0.4.0 <1"
   },
   "devDependencies": {
-    "@captra-ai/state": "^0.4.0",
+    "@captra-ai/state": "^0.4.1",
     "@types/pg": "^8.23.1",
     "pg": "^8.23.1",
     "vitest": "^4.0.4"

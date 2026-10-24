@@ -67,6 +67,7 @@ suite('PostgreSQL integration',()=>{
     await new Promise(resolve=>setTimeout(resolve,30))
     const active=await state.acquire(key,{owner:'agent-new',ttlMs:5_000});expect(active.token).toBeGreaterThan(expired.token)
     await expect(state.commit(key,{status:'old'},{expectedVersion:0,actor:'agent-old',lease:expired})).rejects.toBeInstanceOf(StateLeaseError)
+    await expect(state.commit(['order','other'],{status:'wrong-key'},{expectedVersion:0,actor:'agent-new',lease:active})).rejects.toThrow('different state key')
     await state.commit(key,{status:'allocated'},{expectedVersion:0,actor:'agent-new',lease:active})
     await state.release(active)
     expect(await state.read(key)).toMatchObject({value:{status:'allocated'},version:1})
