@@ -172,10 +172,30 @@ const governance=defineHook({
 
 Transform and policy hooks fail closed. Observer hooks (`onEvent`, `onError`, and `onToolError`) are failure-isolated and increment `captra.hook.failures` instead of changing the run outcome.
 
+## Integration plugins
+
+Third-party integrations bundle tools and lifecycle hooks behind one explicit, inspectable contract:
+
+```ts
+export const crmPlugin=definePlugin({
+  name:'@acme/captra-crm', version:'1.0.0',
+  tools:[lookupCustomer,updateCustomer],
+  hooks:[crmAuditHook],
+})
+
+export default defineApp({
+  name:'Support', scopes:['user'], capabilities:[support],
+  plugins:[crmPlugin], surface:capabilityViews(),
+})
+```
+
+Plugin order is deterministic: plugin hooks wrap app hooks, and app-local tools may reuse the exact same tool object but cannot silently replace another implementation. Duplicate plugin names and conflicting tool registrations fail during app construction. The compiled manifest exposes plugin names and versions without exposing runtime code or credentials.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract
 - `defineTool()` — a reusable, permission-aware integration function
+- `definePlugin()` — a versioned bundle of integration tools and lifecycle hooks
 - `defineApp()` — the registry and deployment boundary
 - `createRuntime()` — validated execution, approvals, cancellation, events, and idempotency
 - `MemoryAdapter` — organization, user, project, session, and task memory

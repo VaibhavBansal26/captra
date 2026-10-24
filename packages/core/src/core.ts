@@ -39,17 +39,23 @@ export type Hook={
   onToolError?:(name:string,error:unknown,context:RuntimeContext)=>void|Promise<void>
 }
 export function defineHook(hook:Hook):Hook{return Object.freeze(hook)}
+export type CaptraPlugin={readonly name:string;readonly version:string;readonly tools:readonly Tool<any,any>[];readonly hooks:readonly Hook[]}
+export function definePlugin(definition:{name:string;version?:string;tools?:readonly Tool<any,any>[];hooks?:readonly Hook[]}):CaptraPlugin{
+  if(!definition.name.trim())throw new Error('Plugin name is required')
+  return Object.freeze({name:definition.name,version:definition.version??'1.0.0',tools:Object.freeze([...(definition.tools??[])]),hooks:Object.freeze([...(definition.hooks??[])])})
+}
 export type Surface={readonly mode:'capability-views'}
 export function capabilityViews():Surface{return Object.freeze({mode:'capability-views' as const})}
-export type AgentApp<C extends readonly Capability<any,any,any>[]=readonly Capability<any,any,any>[] >={name:string;version:string;scopes:readonly MemoryScope[];capabilities:C;tools:readonly Tool<unknown,unknown>[];surface:Surface;hooks:readonly Hook[]}
+export type AgentApp<C extends readonly Capability<any,any,any>[]=readonly Capability<any,any,any>[] >={name:string;version:string;scopes:readonly MemoryScope[];capabilities:C;tools:readonly Tool<unknown,unknown>[];surface:Surface;hooks:readonly Hook[];plugins:readonly CaptraPlugin[]}
 export type CapabilityName<App extends AgentApp>=App['capabilities'][number]['name']
 export type CapabilityByName<App extends AgentApp,Name extends CapabilityName<App>>=Extract<App['capabilities'][number],{name:Name}>
 export type CapabilityInput<App extends AgentApp,Name extends CapabilityName<App>>=CapabilityByName<App,Name> extends Capability<infer Input,any,any>?Input:never
 export type CapabilityOutput<App extends AgentApp,Name extends CapabilityName<App>>=CapabilityByName<App,Name> extends Capability<any,infer Output,any>?Output:never
-export function defineApp<const C extends readonly Capability<any,any,any>[]>(definition:{name:string;version?:string;scopes:readonly MemoryScope[];capabilities:C;tools?:readonly Tool<any,any>[];surface:Surface;hooks?:readonly Hook[]}):AgentApp<C>{
+export function defineApp<const C extends readonly Capability<any,any,any>[]>(definition:{name:string;version?:string;scopes:readonly MemoryScope[];capabilities:C;tools?:readonly Tool<any,any>[];surface:Surface;hooks?:readonly Hook[];plugins?:readonly CaptraPlugin[]}):AgentApp<C>{
   const names=new Set<string>(); for(const capability of definition.capabilities){if(names.has(capability.name))throw new Error(`Duplicate capability: ${capability.name}`);names.add(capability.name)}
-  const toolRegistry=new Map<string,Tool<any,any>>();for(const tool of [...definition.capabilities.flatMap(capability=>capability.tools),...(definition.tools??[])]){const existing=toolRegistry.get(tool.name);if(existing&&existing!==tool)throw new Error(`Duplicate tool: ${tool.name}`);toolRegistry.set(tool.name,tool)}
-  return Object.freeze({...definition,version:definition.version??'1.0.0',tools:[...toolRegistry.values()],hooks:definition.hooks??[]})
+  const plugins=definition.plugins??[],pluginNames=new Set<string>();for(const plugin of plugins){if(pluginNames.has(plugin.name))throw new Error(`Duplicate plugin: ${plugin.name}`);pluginNames.add(plugin.name)}
+  const toolRegistry=new Map<string,Tool<any,any>>();for(const tool of [...plugins.flatMap(plugin=>plugin.tools),...definition.capabilities.flatMap(capability=>capability.tools),...(definition.tools??[])]){const existing=toolRegistry.get(tool.name);if(existing&&existing!==tool)throw new Error(`Duplicate tool: ${tool.name}`);toolRegistry.set(tool.name,tool)}
+  return Object.freeze({...definition,version:definition.version??'1.0.0',plugins:Object.freeze([...plugins]),tools:Object.freeze([...toolRegistry.values()]),hooks:Object.freeze([...plugins.flatMap(plugin=>plugin.hooks),...(definition.hooks??[])])})
 }
 
 export type RunRequest={capability:string;input:unknown;identity:ExecutionIdentity;idempotencyKey?:string;onEvent?:(event:CaptraEvent)=>void|Promise<void>}
