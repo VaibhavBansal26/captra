@@ -6,9 +6,12 @@
   "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/server" },
   "type": "module",
   "main": "./dist/index.js", "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./node": { "types": "./dist/node.d.ts", "import": "./dist/node.js" }
+  },
   "files": ["dist"], "publishConfig": { "access": "public" },
   "peerDependencies": { "@captra/core": "^0.1.0" },
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
-  "devDependencies": { "vitest": "^4.0.4", "zod": "^4.1.12" }
+  "devDependencies": { "@types/node": "^24.0.0", "vitest": "^4.0.4", "zod": "^4.1.12" }
 }

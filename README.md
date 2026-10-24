@@ -190,7 +190,7 @@ await worker.runOnce()
 - `@captra/postgres` — durable run, event, and multi-level memory storage
 - `@captra/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming
 - `@captra/react` — hooks and safe capability-view rendering
-- `@captra/server` — Web Standard backend handler
+- `@captra/server` — Web Standard backend handler and Node HTTP adapter
 - `@captra/cli` — create, dev, build, test, and inspect commands
 - `create-captra` — project scaffolding
 
@@ -221,6 +221,15 @@ const handler=createCaptraHandler(runtime,{
 export const GET=handler
 export const POST=handler
 export const OPTIONS=handler
+```
+
+Node HTTP, Express-compatible request/response servers, and frameworks built on them can use the included adapter:
+
+```ts
+import { createServer } from 'node:http'
+import { createNodeHandler } from '@captra/server/node'
+
+createServer(createNodeHandler(handler)).listen(8787)
 ```
 
 Routes are matched exactly beneath the mount path. The server negotiates the Captra protocol, attaches request IDs, bounds request bodies, answers CORS preflights before authentication, and returns stable error codes with appropriate HTTP statuses.
