@@ -9,7 +9,10 @@
     "url": "git+https://github.com/VaibhavBansal26/captra.git"
   },
   "type": "module",
-  "workspaces": ["packages/*", "examples/*"],
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
   "scripts": {
     "test": "npm run build:packages && npm run test -w @captra/core && npm run test -w @captra/client && npm run test -w @captra/server && npm run test -w @captra/postgres && npm run test -w @captra/openai && npm run test -w @captra/react && npm run check:scaffold",
     "build": "npm run build:packages && npm run build:example",
@@ -23,6 +26,22 @@
     "dev": "npm run dev -w @captra/customer-ops",
     "inspect": "node packages/cli/bin/captra.js inspect examples/customer-ops"
   },
-  "engines": { "node": ">=20" },
-  "devDependencies": { "@changesets/cli": "^2.29.7" }
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.5",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.7",
+    "vitest": "^4.1.12",
+    "zod": "^4.6.7"
+  }
 }

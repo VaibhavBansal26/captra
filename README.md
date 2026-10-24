@@ -336,4 +336,6 @@ Routes are matched exactly beneath the mount path. The server negotiates the Cap
 
 ## Releases
 
-Every library package is compiled to ESM JavaScript with TypeScript declarations, declaration maps, source maps, explicit export maps, and restricted npm file lists. Changesets coordinates framework versions and the release workflow opens version PRs before publishing with npm provenance. Packages are not published until the repository is configured with an npm trusted publisher or `NPM_TOKEN`.
+Every library package is compiled to ESM JavaScript with TypeScript declarations, declaration maps, source maps, explicit export maps, and restricted npm file lists. Changesets coordinates framework versions and the manual release workflow opens version PRs before publishing with npm provenance.
+
+Publishing is intentionally disabled by default. Before running the workflow, a repository owner must enable GitHub Actions to create pull requests and configure either npm trusted publishing or `NPM_TOKEN`. Then run **Release** from GitHub Actions with the confirmation input. Normal pushes run CI only, so missing publication credentials never produce a misleading red build.

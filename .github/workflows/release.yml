@@ -1,8 +1,13 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Run the Changesets release workflow
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -11,12 +16,13 @@ permissions:
 
 jobs:
   release:
+    if: ${{ inputs.confirm }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
           registry-url: https://registry.npmjs.org
       - run: npm ci
