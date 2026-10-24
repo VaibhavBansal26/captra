@@ -1,5 +1,18 @@
 # @captra-ai/react
 
+## 0.3.0
+
+### Minor Changes
+
+- Add Captra State, a typed reactive state graph with subscriptions, request deduplication, prefix invalidation, optimistic updates, rollback, persistence, and hydration. Capabilities can now declare state reads, writes, and invalidations; local and remote React hooks apply those effects after successful execution.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.3.0
+  - @captra-ai/state@0.3.0
+  - @captra-ai/client@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

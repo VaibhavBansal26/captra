@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/openai",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "OpenAI Responses API model adapter for Captra.",
   "license": "MIT",
   "repository": {
@@ -24,7 +24,7 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@captra-ai/core": ">=0.2.0 <1"
+    "@captra-ai/core": ">=0.3.0 <1"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

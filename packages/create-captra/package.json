@@ -1,6 +1,6 @@
 {
   "name": "create-captra",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Create a new Captra application from the command line.",
   "license": "MIT",
   "repository": {
@@ -16,7 +16,7 @@
     "bin"
   ],
   "dependencies": {
-    "@captra-ai/cli": "^0.2.1"
+    "@captra-ai/cli": "^0.3.0"
   },
   "publishConfig": {
     "access": "public"

@@ -14,9 +14,9 @@
     "examples/*"
   ],
   "scripts": {
-    "test": "npm run build:packages && npm run test -w @captra-ai/core && npm run test -w @captra-ai/client && npm run test -w @captra-ai/server && npm run test -w @captra-ai/postgres && npm run test -w @captra-ai/openai && npm run test -w @captra-ai/react && npm run check:scaffold",
+    "test": "npm run build:packages && npm run test -w @captra-ai/core && npm run test -w @captra-ai/state && npm run test -w @captra-ai/client && npm run test -w @captra-ai/server && npm run test -w @captra-ai/postgres && npm run test -w @captra-ai/openai && npm run test -w @captra-ai/react && npm run check:scaffold",
     "build": "npm run build:packages && npm run build:example",
-    "build:packages": "npm run build -w @captra-ai/core && npm run build -w @captra-ai/client && npm run build -w @captra-ai/server && npm run build -w @captra-ai/react && npm run build -w @captra-ai/postgres && npm run build -w @captra-ai/openai && npm run build -w captra",
+    "build:packages": "npm run build -w @captra-ai/core && npm run build -w @captra-ai/state && npm run build -w @captra-ai/client && npm run build -w @captra-ai/server && npm run build -w @captra-ai/react && npm run build -w @captra-ai/postgres && npm run build -w @captra-ai/openai && npm run build -w captra",
     "build:example": "npm run build -w @captra-ai/customer-ops",
     "check:packages": "node scripts/verify-packages.mjs",
     "check:scaffold": "node scripts/verify-scaffold.mjs",

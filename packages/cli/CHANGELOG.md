@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.3.0
+
+### Minor Changes
+
+- Update the full-stack starter to Captra 0.3 with the new typed state layer.
+
 ## 0.2.1
 
 ### Patch Changes

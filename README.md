@@ -111,6 +111,33 @@ await refund.stream({amount:48})
 
 The capability name, input, and output are inferred from the same app contract used by `createCaptraClient`. Streaming trace events update independently before the final structured result arrives.
 
+## Live application state
+
+Captra separates live state from agent memory. State is exact, reactive application data; memory is historical context recalled by relevance. A capability declares which state it reads and which state becomes stale after it succeeds:
+
+```ts
+const addTodo=capability({
+  name:'todos.add',
+  state:{reads:[['todos']],writes:[['todos']]},
+  // input, output, run and view omitted
+})
+```
+
+In React, one hook owns loading, deduplication, subscriptions, errors, and refresh. Successful capabilities automatically invalidate their declared writes and invalidations:
+
+```tsx
+const todos=useCaptraState<Todo[]>(['todos'],{load:api.listTodos,staleTime:30_000})
+const add=useRemoteCapability(client,'todos.add')
+const optimistic=useOptimisticState<Todo[]>(['todos'])
+
+const change=optimistic(current=>[...(current??[]),draft])
+const result=await add.run(draft)
+if (result) change.commit()
+else change.rollback()
+```
+
+Use `createState()` with `CaptraStateProvider` to isolate an app, tenant, or test. `dehydrate()`/`hydrate()` support server rendering, while memory and local-storage persistence adapters support longer-lived clients.
+
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts
@@ -265,6 +292,7 @@ await worker.runOnce()
 
 - `captra` — recommended umbrella package with explicit client, React, server, Node, PostgreSQL, and OpenAI entry points
 - `@captra-ai/core` — contracts, runtime, durable runs, memory, events, planners, manifests
+- `@captra-ai/state` — typed live state, subscriptions, deduplicated loading, optimistic updates, persistence
 - `@captra-ai/client` — typed HTTP client and live event streaming
 - `@captra-ai/postgres` — durable run, event, and multi-level memory storage
 - `@captra-ai/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming

@@ -1,5 +1,16 @@
 # create-captra
 
+## 0.3.0
+
+### Minor Changes
+
+- Scaffold Captra 0.3 applications with the new typed state layer.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/cli@0.3.0
+
 ## 0.2.1
 
 ### Patch Changes
