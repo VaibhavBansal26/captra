@@ -249,6 +249,8 @@ const runtime=createRuntime(app,{
 
 The schema includes tenant-scoped memory indexes, durable event history, and a database-enforced idempotency key. Run event sequence allocation is serialized on the run row to remain safe under concurrent workers.
 
+CI runs the adapter against PostgreSQL 16 with `pgvector`. The integration suite verifies migrations, concurrent idempotent run creation, serialized events and checkpoints, tenant and expiry isolation, vector ranking and deduplication, and exclusive queue leases. Locally, set `CAPTRA_POSTGRES_URL` to opt into the same suite.
+
 Background runs use leased queue jobs, allowing another worker to recover work after a crashed worker's lease expires:
 
 ```ts

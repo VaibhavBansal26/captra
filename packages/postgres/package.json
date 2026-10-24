@@ -10,5 +10,5 @@
   "files": ["dist"], "publishConfig": { "access": "public" },
   "peerDependencies": { "@captra/core": "^0.1.0" },
   "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
-  "devDependencies": { "vitest": "^4.0.4" }
+  "devDependencies": { "@types/pg": "^8.23.1", "pg": "^8.23.1", "vitest": "^4.0.4" }
 }

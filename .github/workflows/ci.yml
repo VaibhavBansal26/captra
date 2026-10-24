@@ -8,6 +8,21 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: captra
+          POSTGRES_PASSWORD: captra
+          POSTGRES_DB: captra_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U captra -d captra_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      CAPTRA_POSTGRES_URL: postgresql://captra:captra@localhost:5432/captra_test
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
