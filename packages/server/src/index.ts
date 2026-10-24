@@ -4,6 +4,11 @@ export type AuthResolver=(request:Request)=>Promise<{tenantId:string;userId:stri
 export type CorsOptions={origins:'*'|readonly string[];methods?:readonly string[];headers?:readonly string[];credentials?:boolean;maxAge?:number}
 export type CaptraHandlerOptions={auth:AuthResolver;queue?:WorkQueue;basePath?:string;maxBodyBytes?:number;cors?:CorsOptions}
 export class CaptraHttpError extends Error{constructor(readonly status:number,readonly code:string,message:string){super(message);this.name='CaptraHttpError'}}
+export type FetchHandler=(request:Request)=>Response|Promise<Response>
+export type NextRoute={GET:FetchHandler;POST:FetchHandler;OPTIONS:FetchHandler}
+export function createNextRoute(handler:FetchHandler):NextRoute{return Object.freeze({GET:handler,POST:handler,OPTIONS:handler})}
+export type HonoContext={req:{raw:Request}}
+export function createHonoHandler(handler:FetchHandler){return (context:HonoContext)=>handler(context.req.raw)}
 
 export function createCaptraHandler(runtime:Runtime,options:CaptraHandlerOptions){
   const basePath=normalizeBasePath(options.basePath),maxBodyBytes=options.maxBodyBytes??1_000_000

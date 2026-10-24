@@ -317,6 +317,21 @@ import { createNodeHandler } from '@captra/server/node'
 createServer(createNodeHandler(handler)).listen(8787)
 ```
 
+Framework-native mounts are intentionally tiny and dependency-free:
+
+```ts
+// Next.js app/api/captra/[[...path]]/route.ts
+export const {GET,POST,OPTIONS}=createNextRoute(handler)
+
+// Hono / Cloudflare Workers
+app.all('/api/captra/*',createHonoHandler(handler))
+
+// Express — preserves originalUrl when mounted
+app.use('/api/captra',createExpressMiddleware(handler))
+```
+
+Import Express support from `captra/server/express`. Next.js and Hono helpers live in `captra/server`, keeping edge bundles free from Node modules.
+
 Routes are matched exactly beneath the mount path. The server negotiates the Captra protocol, attaches request IDs, bounds request bodies, answers CORS preflights before authentication, and returns stable error codes with appropriate HTTP statuses.
 
 ## Releases

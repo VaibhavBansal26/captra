@@ -2,18 +2,18 @@ import { Readable } from 'node:stream'
 import type { IncomingMessage,ServerResponse } from 'node:http'
 
 export type NodeHandler=(request:IncomingMessage,response:ServerResponse)=>void|Promise<void>
-export type NodeAdapterOptions={origin?:string|((request:IncomingMessage)=>string)}
+export type NodeAdapterOptions={origin?:string|((request:IncomingMessage)=>string);url?:string|((request:IncomingMessage)=>string)}
 
 export function createNodeHandler(handler:(request:Request)=>Response|Promise<Response>,options:NodeAdapterOptions={}):NodeHandler{
   return async(incoming,outgoing)=>{
     try{
       const headers=new Headers()
       for(const [name,value] of Object.entries(incoming.headers)){if(Array.isArray(value))for(const item of value)headers.append(name,item);else if(value!==undefined)headers.set(name,value)}
-      const origin=typeof options.origin==='function'?options.origin(incoming):options.origin??inferOrigin(incoming)
+      const origin=typeof options.origin==='function'?options.origin(incoming):options.origin??inferOrigin(incoming),url=typeof options.url==='function'?options.url(incoming):options.url??incoming.url??'/'
       const method=incoming.method??'GET',hasBody=method!=='GET'&&method!=='HEAD'
       const init:RequestInit&{duplex?:'half'}={method,headers,signal:abortSignal(incoming)}
       if(hasBody){init.body=Readable.toWeb(incoming) as ReadableStream<Uint8Array>;init.duplex='half'}
-      const response=await handler(new Request(new URL(incoming.url??'/',origin),init))
+      const response=await handler(new Request(new URL(url,origin),init))
       outgoing.statusCode=response.status
       outgoing.statusMessage=response.statusText
       response.headers.forEach((value,name)=>outgoing.setHeader(name,value))

@@ -8,7 +8,8 @@
   "main": "./dist/index.js", "types": "./dist/index.d.ts",
   "exports": {
     ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
-    "./node": { "types": "./dist/node.d.ts", "import": "./dist/node.js" }
+    "./node": { "types": "./dist/node.d.ts", "import": "./dist/node.js" },
+    "./express": { "types": "./dist/express.d.ts", "import": "./dist/express.js" }
   },
   "files": ["dist"], "publishConfig": { "access": "public" },
   "peerDependencies": { "@captra/core": "^0.1.0" },

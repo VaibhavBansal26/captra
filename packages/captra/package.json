@@ -13,6 +13,7 @@
     "./react": { "types": "./dist/react.d.ts", "import": "./dist/react.js" },
     "./server": { "types": "./dist/server.d.ts", "import": "./dist/server.js" },
     "./server/node": { "types": "./dist/server-node.d.ts", "import": "./dist/server-node.js" },
+    "./server/express": { "types": "./dist/server-express.d.ts", "import": "./dist/server-express.js" },
     "./postgres": { "types": "./dist/postgres.d.ts", "import": "./dist/postgres.js" },
     "./openai": { "types": "./dist/openai.d.ts", "import": "./dist/openai.js" }
   },
