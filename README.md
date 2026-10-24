@@ -47,6 +47,20 @@ export default defineApp({
 })
 ```
 
+An agent is a capability whose implementation is a guarded model/tool loop. Its tools are automatically registered with the app:
+
+```ts
+export const researcher=agent({
+  name:'research', instructions:'Research carefully and cite the evidence.',
+  input:ResearchRequest, output:ResearchReport,
+  model, tools:[searchDocs,fetchPage],
+  budget:{maxSteps:6,maxToolCalls:10,maxTokens:20_000},
+  view:ResearchReportCard,
+})
+```
+
+This preserves one mental model for developers: deterministic capabilities and model-directed agents use the same schemas, memory, tools, approvals, events, workers, and UI boundary.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract
@@ -57,6 +71,7 @@ export default defineApp({
 - `ModelAdapter` — provider-neutral generation and streaming
 - `createStructuredGenerator()` — schema-validated model output
 - `createModelPlanner()` — natural-language capability selection
+- `agent()` — budgeted multi-step model/tool execution as a typed capability
 - `builtinTools` — remember, recall, forget, and JSON HTTP operations
 - `useCaptra()` / `useCapability()` — React orchestration hooks
 

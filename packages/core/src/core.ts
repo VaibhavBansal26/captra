@@ -13,15 +13,15 @@ export type ViewReference<Output=unknown>={readonly name:string;readonly compone
 export function view<Output>(name:string,component?:unknown):ViewReference<Output>{return Object.freeze({name,component})}
 
 export type ExecutionPolicy={timeoutMs?:number;retries?:number;retryDelayMs?:number}
-export type Capability<Input,Output>={readonly kind:'capability';readonly name:string;readonly description:string;readonly input:ZodType<Input>;readonly output:ZodType<Output>;readonly scopes:readonly MemoryScope[];readonly permissions:readonly string[];readonly approval:'never'|'required';readonly idempotent:boolean;readonly policy:ExecutionPolicy;readonly execute:(input:Input,context:RuntimeContext)=>Promise<Output>;readonly view:ViewReference<Output>}
-export function defineCapability<Input,Output>(definition:Omit<Capability<Input,Output>,'kind'|'permissions'|'idempotent'|'policy'|'view'>&{permissions?:readonly string[];idempotent?:boolean;policy?:ExecutionPolicy;view:ViewReference<Output>|unknown}):Capability<Input,Output>{
+export type Capability<Input,Output>={readonly kind:'capability';readonly mode:'function'|'agent';readonly name:string;readonly description:string;readonly input:ZodType<Input>;readonly output:ZodType<Output>;readonly scopes:readonly MemoryScope[];readonly permissions:readonly string[];readonly approval:'never'|'required';readonly idempotent:boolean;readonly policy:ExecutionPolicy;readonly tools:readonly Tool<any,any>[];readonly execute:(input:Input,context:RuntimeContext)=>Promise<Output>;readonly view:ViewReference<Output>}
+export function defineCapability<Input,Output>(definition:Omit<Capability<Input,Output>,'kind'|'mode'|'permissions'|'idempotent'|'policy'|'tools'|'view'>&{mode?:'function'|'agent';permissions?:readonly string[];idempotent?:boolean;policy?:ExecutionPolicy;tools?:readonly Tool<any,any>[];view:ViewReference<Output>|unknown}):Capability<Input,Output>{
   const candidate=definition.view as {name?:string;displayName?:string;component?:unknown}
   const resolved=candidate&&typeof candidate==='object'&&typeof candidate.name==='string'?candidate as ViewReference<Output>:view<Output>(candidate?.displayName??candidate?.name??'AnonymousView',definition.view)
-  return Object.freeze({...definition,kind:'capability' as const,permissions:definition.permissions??[],idempotent:definition.idempotent??false,policy:definition.policy??{},view:resolved})
+  return Object.freeze({...definition,kind:'capability' as const,mode:definition.mode??'function',permissions:definition.permissions??[],idempotent:definition.idempotent??false,policy:definition.policy??{},tools:definition.tools??[],view:resolved})
 }
 
-export function capability<Input,Output>(definition:{name:string;description:string;input:ZodType<Input>;output:ZodType<Output>;memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:'never'|'required';idempotent?:boolean;policy?:ExecutionPolicy;run:(input:Input,context:RuntimeContext)=>Promise<Output>;view:ViewReference<Output>|unknown}):Capability<Input,Output>{
-  return defineCapability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,scopes:definition.memory??[],permissions:definition.permissions,approval:definition.approval??'never',idempotent:definition.idempotent,policy:definition.policy,execute:definition.run,view:definition.view})
+export function capability<Input,Output>(definition:{name:string;description:string;input:ZodType<Input>;output:ZodType<Output>;memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:'never'|'required';idempotent?:boolean;policy?:ExecutionPolicy;tools?:readonly Tool<any,any>[];mode?:'function'|'agent';run:(input:Input,context:RuntimeContext)=>Promise<Output>;view:ViewReference<Output>|unknown}):Capability<Input,Output>{
+  return defineCapability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,scopes:definition.memory??[],permissions:definition.permissions,approval:definition.approval??'never',idempotent:definition.idempotent,policy:definition.policy,tools:definition.tools,mode:definition.mode,execute:definition.run,view:definition.view})
 }
 
 export type Hook={name:string;beforeCapability?:(name:string,input:unknown,context:RuntimeContext)=>Promise<unknown>;afterCapability?:(name:string,output:unknown,context:RuntimeContext)=>Promise<unknown>}
@@ -31,8 +31,8 @@ export function capabilityViews():Surface{return Object.freeze({mode:'capability
 export type AgentApp={name:string;version:string;scopes:readonly MemoryScope[];capabilities:readonly Capability<unknown,unknown>[];tools:readonly Tool<unknown,unknown>[];surface:Surface;hooks:readonly Hook[]}
 export function defineApp<const C extends readonly Capability<any,any>[]>(definition:{name:string;version?:string;scopes:readonly MemoryScope[];capabilities:C;tools?:readonly Tool<any,any>[];surface:Surface;hooks?:readonly Hook[]}):AgentApp{
   const names=new Set<string>(); for(const capability of definition.capabilities){if(names.has(capability.name))throw new Error(`Duplicate capability: ${capability.name}`);names.add(capability.name)}
-  const toolNames=new Set<string>();for(const tool of definition.tools??[]){if(toolNames.has(tool.name))throw new Error(`Duplicate tool: ${tool.name}`);toolNames.add(tool.name)}
-  return Object.freeze({...definition,version:definition.version??'1.0.0',tools:definition.tools??[],hooks:definition.hooks??[]})
+  const toolRegistry=new Map<string,Tool<any,any>>();for(const tool of [...definition.capabilities.flatMap(capability=>capability.tools),...(definition.tools??[])]){const existing=toolRegistry.get(tool.name);if(existing&&existing!==tool)throw new Error(`Duplicate tool: ${tool.name}`);toolRegistry.set(tool.name,tool)}
+  return Object.freeze({...definition,version:definition.version??'1.0.0',tools:[...toolRegistry.values()],hooks:definition.hooks??[]})
 }
 
 export type RunRequest={capability:string;input:unknown;identity:ExecutionIdentity;idempotencyKey?:string;onEvent?:(event:CaptraEvent)=>void|Promise<void>}
