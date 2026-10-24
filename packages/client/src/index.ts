@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type RemoteCapabilityResult, type RunRecord } from '@captra/core'
+import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type RemoteCapabilityResult, type RunRecord } from '@captra-ai/core'
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}

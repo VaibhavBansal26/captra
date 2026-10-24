@@ -1,7 +1,7 @@
 import { createTicket } from './capabilities/create-ticket'
 import { issueRefund } from './capabilities/issue-refund'
 import { searchDocs } from './capabilities/search-docs'
-import { capabilityViews, defineApp, defineHook } from '@captra/core'
+import { capabilityViews, defineApp, defineHook } from '@captra-ai/core'
 
 const privacy = defineHook({
   name: 'privacy',

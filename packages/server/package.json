@@ -1,5 +1,5 @@
 {
-  "name": "@captra/server",
+  "name": "@captra-ai/server",
   "version": "0.2.0",
   "description": "Framework-neutral HTTP handler for Captra applications.",
   "license": "MIT",
@@ -32,7 +32,7 @@
     "access": "public"
   },
   "peerDependencies": {
-    "@captra/core": ">=0.2.0 <1"
+    "@captra-ai/core": ">=0.2.0 <1"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

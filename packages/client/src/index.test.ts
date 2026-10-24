@@ -1,12 +1,12 @@
 import { describe,expect,expectTypeOf,it } from 'vitest'
 import { z } from 'zod'
-import { capability,capabilityViews,defineApp } from '@captra/core'
+import { capability,capabilityViews,defineApp } from '@captra-ai/core'
 import { CaptraClientError,createCaptraClient } from './index'
 
 const greet=capability({name:'greet',description:'Greet someone',input:z.object({name:z.string()}),output:z.object({message:z.string()}),approval:'never',run:async({name})=>({message:`Hello ${name}`}),view:{name:'Greeting'}})
 const app=defineApp({name:'Typed',scopes:[],capabilities:[greet],surface:capabilityViews()})
 
-describe('@captra/client',()=>{
+describe('@captra-ai/client',()=>{
   it('infers capability input and output from the app contract',async()=>{
     let body:unknown
     const client=createCaptraClient<typeof app>({baseUrl:'https://captra.test',fetch:async(_url,init)=>{body=JSON.parse(String(init?.body));expect(new Headers(init?.headers).get('captra-protocol')).toBe('1.0');return Response.json({run:{id:'r1',status:'completed'},capability:{name:'greet',mode:'function',description:'Greet someone',view:'Greeting'},value:{message:'Hello Ada'},trace:[]})}})

@@ -1,5 +1,5 @@
 {
-  "name": "@captra/react",
+  "name": "@captra-ai/react",
   "version": "0.2.0",
   "description": "React hooks and safe capability views for Captra.",
   "license": "MIT",
@@ -28,12 +28,12 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@captra/client": ">=0.2.0 <1",
-    "@captra/core": ">=0.2.0 <1",
+    "@captra-ai/client": ">=0.2.0 <1",
+    "@captra-ai/core": ">=0.2.0 <1",
     "react": ">=18"
   },
   "peerDependenciesMeta": {
-    "@captra/client": {
+    "@captra-ai/client": {
       "optional": true
     }
   },

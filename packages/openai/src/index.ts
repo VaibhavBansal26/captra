@@ -1,4 +1,4 @@
-import type { EmbeddingAdapter,ModelAdapter,ModelMessage,ModelRequest,ModelResponse } from '@captra/core'
+import type { EmbeddingAdapter,ModelAdapter,ModelMessage,ModelRequest,ModelResponse } from '@captra-ai/core'
 
 export type OpenAIOptions={model:string;apiKey?:string;baseUrl?:string;organization?:string;project?:string;fetch?:typeof fetch;headers?:HeadersInit;maxRetries?:number}
 export type OpenAIEmbeddingOptions=Omit<OpenAIOptions,'model'|'maxRetries'>&{model?:string;dimensions?:number}

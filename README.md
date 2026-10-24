@@ -114,7 +114,7 @@ The capability name, input, and output are inferred from the same app contract u
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts
-import { createOpenAI } from '@captra/openai'
+import { createOpenAI } from '@captra-ai/openai'
 
 const model=createOpenAI({model:'gpt-5.4'})
 ```
@@ -235,8 +235,8 @@ Plugin order is deterministic: plugin hooks wrap app hooks, and app-local tools 
 Captra accepts any `pg`-compatible client exposing `query(text, values)`, so the adapter is not tied to a specific Postgres vendor:
 
 ```ts
-import { createRuntime } from '@captra/core'
-import { migrateCaptra, PostgresMemoryStore, PostgresRunStore } from '@captra/postgres'
+import { createRuntime } from '@captra-ai/core'
+import { migrateCaptra, PostgresMemoryStore, PostgresRunStore } from '@captra-ai/postgres'
 
 await migrateCaptra(pool)
 
@@ -264,13 +264,13 @@ await worker.runOnce()
 ## Packages
 
 - `captra` — recommended umbrella package with explicit client, React, server, Node, PostgreSQL, and OpenAI entry points
-- `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests
-- `@captra/client` — typed HTTP client and live event streaming
-- `@captra/postgres` — durable run, event, and multi-level memory storage
-- `@captra/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming
-- `@captra/react` — hooks and safe capability-view rendering
-- `@captra/server` — Web Standard backend handler and Node HTTP adapter
-- `@captra/cli` — create, dev, build, test, and inspect commands
+- `@captra-ai/core` — contracts, runtime, durable runs, memory, events, planners, manifests
+- `@captra-ai/client` — typed HTTP client and live event streaming
+- `@captra-ai/postgres` — durable run, event, and multi-level memory storage
+- `@captra-ai/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming
+- `@captra-ai/react` — hooks and safe capability-view rendering
+- `@captra-ai/server` — Web Standard backend handler and Node HTTP adapter
+- `@captra-ai/cli` — create, dev, build, test, and inspect commands
 - `create-captra` — project scaffolding
 
 ## Commands
@@ -312,7 +312,7 @@ Node HTTP, Express-compatible request/response servers, and frameworks built on 
 
 ```ts
 import { createServer } from 'node:http'
-import { createNodeHandler } from '@captra/server/node'
+import { createNodeHandler } from '@captra-ai/server/node'
 
 createServer(createNodeHandler(handler)).listen(8787)
 ```

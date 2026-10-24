@@ -1,4 +1,4 @@
-# @captra/react
+# @captra-ai/react
 
 ## 0.2.0
 
@@ -9,5 +9,5 @@
 ### Patch Changes
 
 - Updated dependencies [09ce055]
-  - @captra/core@0.2.0
-  - @captra/client@0.2.0
+  - @captra-ai/core@0.2.0
+  - @captra-ai/client@0.2.0

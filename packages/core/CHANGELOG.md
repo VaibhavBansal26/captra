@@ -1,4 +1,4 @@
-# @captra/core
+# @captra-ai/core
 
 ## 0.2.0
 

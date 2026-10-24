@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineCapability, type CapabilityViewProps } from '@captra/core'
+import { defineCapability, type CapabilityViewProps } from '@captra-ai/core'
 
 const RefundResult = z.object({ refundId: z.string(), amount: z.number(), status: z.literal('approved') })
 type RefundResult = z.infer<typeof RefundResult>

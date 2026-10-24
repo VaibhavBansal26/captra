@@ -1,1 +1,1 @@
-export * from '@captra/postgres'
+export * from '@captra-ai/postgres'

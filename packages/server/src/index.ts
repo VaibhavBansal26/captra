@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, compileManifest, type CapabilityResult, type RemoteCapabilityResult, type Runtime, type WorkQueue } from '@captra/core'
+import { CAPTRA_PROTOCOL_VERSION, compileManifest, type CapabilityResult, type RemoteCapabilityResult, type Runtime, type WorkQueue } from '@captra-ai/core'
 
 export type AuthResolver=(request:Request)=>Promise<{tenantId:string;userId:string;projectId:string;sessionId?:string}>
 export type CorsOptions={origins:'*'|readonly string[];methods?:readonly string[];headers?:readonly string[];credentials?:boolean;maxAge?:number}

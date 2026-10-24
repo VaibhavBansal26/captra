@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineCapability, type CapabilityViewProps } from '@captra/core'
+import { defineCapability, type CapabilityViewProps } from '@captra-ai/core'
 
 const SearchResult = z.object({
   answer: z.string(),

@@ -1,5 +1,5 @@
 {
-  "name": "@captra/client",
+  "name": "@captra-ai/client",
   "version": "0.2.0",
   "description": "HTTP and streaming client for Captra runtimes.",
   "license": "MIT",
@@ -28,7 +28,7 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@captra/core": ">=0.2.0 <1"
+    "@captra-ai/core": ">=0.2.0 <1"
   },
   "devDependencies": {
     "vitest": "^4.0.4",

@@ -30,7 +30,7 @@ function inspect(directory){
   console.log(`\nCaptra project: ${directory}`)
   for(const item of required)console.log(`${existsSync(resolve(directory,item))?'✓':'×'} ${item}`)
   const pkgPath=resolve(directory,'package.json')
-  if(existsSync(pkgPath)){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));const deps={...pkg.dependencies,...pkg.devDependencies},frameworks=deps.captra?['captra']:['@captra/core','@captra/react',...(fullStack?['@captra/client','@captra/server']:[])];for(const name of frameworks)console.log(`${deps[name]?'✓':'×'} ${name}${deps[name]?` ${deps[name]}`:''}`)}
+  if(existsSync(pkgPath)){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));const deps={...pkg.dependencies,...pkg.devDependencies},frameworks=deps.captra?['captra']:['@captra-ai/core','@captra-ai/react',...(fullStack?['@captra-ai/client','@captra-ai/server']:[])];for(const name of frameworks)console.log(`${deps[name]?'✓':'×'} ${name}${deps[name]?` ${deps[name]}`:''}`)}
   console.log('')
 }
 function doctor(directory){
@@ -40,7 +40,7 @@ function doctor(directory){
   const major=Number(process.versions.node.split('.')[0]);check(`Node.js ${process.versions.node}`,major>=20,'install Node.js 20 or newer')
   const pkgPath=resolve(directory,'package.json'),hasPackage=existsSync(pkgPath);check('package.json',hasPackage,'run this command from a Captra project')
   let dependencies={};if(hasPackage){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));dependencies={...pkg.dependencies,...pkg.devDependencies}}
-  check('Captra dependency',Boolean(dependencies.captra||dependencies['@captra/core']),'install captra')
+  check('Captra dependency',Boolean(dependencies.captra||dependencies['@captra-ai/core']),'install captra')
   check('Application contract',existsSync(resolve(directory,'src/captra.app.ts')),'create src/captra.app.ts')
   check('Capability directory',existsSync(resolve(directory,'src/capabilities')),'create src/capabilities')
   const configs=['tsconfig.json','tsconfig.app.json','tsconfig.server.json'].some(file=>existsSync(resolve(directory,file)));check('TypeScript configuration',configs,'add a tsconfig.json')

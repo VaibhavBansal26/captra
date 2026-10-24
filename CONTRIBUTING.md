@@ -11,6 +11,6 @@ npm run build
 npm run inspect
 ```
 
-Keep `@captra/core` independent of React, model providers, databases, and server frameworks. Integration-specific behavior belongs in an adapter package.
+Keep `@captra-ai/core` independent of React, model providers, databases, and server frameworks. Integration-specific behavior belongs in an adapter package.
 
 Before proposing a public API change, describe the capability contract it improves and whether serialized runs remain backward compatible.

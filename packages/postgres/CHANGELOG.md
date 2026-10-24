@@ -1,4 +1,4 @@
-# @captra/postgres
+# @captra-ai/postgres
 
 ## 0.2.0
 
@@ -9,4 +9,4 @@
 ### Patch Changes
 
 - Updated dependencies [09ce055]
-  - @captra/core@0.2.0
+  - @captra-ai/core@0.2.0

@@ -1,6 +1,6 @@
 import { createElement, useCallback, useMemo, useState, type ComponentType, type ReactNode } from 'react'
-import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra/core'
-import type { CaptraClient } from '@captra/client'
+import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra-ai/core'
+import type { CaptraClient } from '@captra-ai/client'
 
 export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approve?:(result:CapabilityResult)=>Promise<boolean>}
 export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {

@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CheckpointRecord,type CheckpointStore,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CheckpointRecord,type CheckpointStore,type CreateRun,type EmbeddingAdapter,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra-ai/core'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
 export { postgresSchema,postgresVectorSchema }

@@ -16,7 +16,7 @@
     "bin"
   ],
   "dependencies": {
-    "@captra/cli": "^0.2.0"
+    "@captra-ai/cli": "^0.2.0"
   },
   "publishConfig": {
     "access": "public"

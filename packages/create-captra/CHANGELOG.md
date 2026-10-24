@@ -9,4 +9,4 @@
 ### Patch Changes
 
 - Updated dependencies [09ce055]
-  - @captra/cli@0.2.0
+  - @captra-ai/cli@0.2.0

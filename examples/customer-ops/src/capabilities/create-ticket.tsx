@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { defineCapability, type CapabilityViewProps } from '@captra/core'
+import { defineCapability, type CapabilityViewProps } from '@captra-ai/core'
 
 const TicketResult = z.object({ id: z.string(), title: z.string(), status: z.literal('open') })
 type TicketResult = z.infer<typeof TicketResult>

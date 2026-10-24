@@ -9,7 +9,7 @@ try{
   const manifest=JSON.parse(readFileSync(join(project,'package.json'),'utf8'))
   if(manifest.name!=='my-starter')throw new Error(`Unexpected scaffold package name: ${manifest.name}`)
   if(!manifest.dependencies.captra)throw new Error('Scaffold is missing the captra framework package')
-  for(const file of ['src/captra.app.ts','src/client.ts','src/server.ts','src/App.tsx'])if(readFileSync(join(project,file),'utf8').includes('@captra/'))throw new Error(`${file} bypasses the captra umbrella package`)
+  for(const file of ['src/captra.app.ts','src/client.ts','src/server.ts','src/App.tsx'])if(readFileSync(join(project,file),'utf8').includes('@captra-ai/'))throw new Error(`${file} bypasses the captra umbrella package`)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'doctor',project],repository)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'add','capability','summarize-notes',project],repository)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'add','tool','search-docs',project],repository)

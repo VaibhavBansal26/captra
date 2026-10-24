@@ -1,1 +1,1 @@
-export * from '@captra/client'
+export * from '@captra-ai/client'

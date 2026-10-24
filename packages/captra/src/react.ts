@@ -1,1 +1,1 @@
-export * from '@captra/react'
+export * from '@captra-ai/react'
