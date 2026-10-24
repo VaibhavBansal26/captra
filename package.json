@@ -18,6 +18,9 @@
     "build": "npm run build:packages && npm run build:example",
     "build:packages": "npm run build -w @captra-ai/core && npm run build -w @captra-ai/state && npm run build -w @captra-ai/client && npm run build -w @captra-ai/server && npm run build -w @captra-ai/react && npm run build -w @captra-ai/postgres && npm run build -w @captra-ai/openai && npm run build -w captra",
     "build:example": "npm run build -w @captra-ai/customer-ops",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
     "check:packages": "node scripts/verify-packages.mjs",
     "check:scaffold": "node scripts/verify-scaffold.mjs",
     "check:public-release": "node scripts/verify-public-release.mjs",
@@ -42,6 +45,7 @@
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
     "vite": "^7.3.7",
+    "vitepress": "^1.6.4",
     "vitest": "^4.1.12",
     "zod": "^4.6.7"
   }

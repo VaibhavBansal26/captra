@@ -31,4 +31,4 @@ Plugin names must be unique. Tool conflicts fail during application construction
 
 ## Planned official integrations
 
-The next integration milestone prioritizes authentication, PostgreSQL platforms, observability, additional model providers, and common SaaS tools. See the [roadmap](../ROADMAP.md).
+The next integration milestone prioritizes authentication, PostgreSQL platforms, observability, additional model providers, and common SaaS tools. See the [roadmap](/roadmap).

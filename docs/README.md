@@ -10,7 +10,7 @@ Captra is a capability-first TypeScript framework for applications that combine 
 4. [Backend and deployment](deployment.md)
 5. [Integrations and plugins](integrations.md)
 
-For the planned stability milestones, see the [roadmap](../ROADMAP.md).
+For the planned stability milestones, see the [roadmap](/roadmap).
 
 ## API entry points
 
