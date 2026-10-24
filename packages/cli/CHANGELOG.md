@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.2.1
+
+### Patch Changes
+
+- Update the full-stack starter to install the released Captra 0.2 line so newly generated applications install successfully from the public npm registry.
+
 ## 0.2.0
 
 ### Minor Changes
