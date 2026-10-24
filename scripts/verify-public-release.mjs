@@ -22,7 +22,7 @@ try{
     if(attempt<propagationAttempts){console.log(`npm registry is still propagating create-captra@${generator.version}; retrying (${attempt}/${propagationAttempts})`);await delay(15_000)}
   }
   if(!created)throw new Error(`Public generator was unavailable after propagation retries:\n${lastFailure}`)
-  run('npm',['install','--cache',cache],project)
+  await installWithPropagation()
   run('npm',['test'],project)
   run('npm',['run','build'],project)
   console.log(`✓ public create-captra@${generator.version} install, test, and build`)
@@ -30,6 +30,17 @@ try{
 
 function run(command,args,cwd){const result=spawnSync(command,args,{cwd,stdio:'inherit'});if(result.status!==0)throw new Error(`${command} ${args.join(' ')} failed with status ${result.status}`)}
 function delay(milliseconds){return new Promise(resolveDelay=>setTimeout(resolveDelay,milliseconds))}
+
+async function installWithPropagation(){
+  let lastFailure=''
+  for(let attempt=1;attempt<=propagationAttempts;attempt++){
+    const result=spawnSync('npm',['install','--cache',cache,'--prefer-online'],{cwd:project,encoding:'utf8'})
+    if(result.status===0){process.stdout.write(result.stdout);return}
+    lastFailure=`${result.stdout}\n${result.stderr}`
+    if(attempt<propagationAttempts){console.log(`npm package tarballs are still propagating; retrying install (${attempt}/${propagationAttempts})`);await delay(15_000)}
+  }
+  throw new Error(`Public package installation failed after propagation retries:\n${lastFailure}`)
+}
 
 function discoverPackages(){
   return readdirSync(join(repository,'packages'),{withFileTypes:true})
