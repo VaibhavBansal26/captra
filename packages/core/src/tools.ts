@@ -26,13 +26,13 @@ export function createToolRunner(tools:readonly Tool<any,any>[],context:RuntimeC
     if(!tool)throw new Error(`Unknown tool: ${name}`)
     if(authorize&&!(await authorize(tool.permissions)))throw new Error(`Not authorized to call ${name}`)
     const parsed=tool.input.parse(input)
-    await context.emit({type:'tool.started',capability:name,detail:tool.description,data:{input:parsed}})
+    const span=context.telemetry.startSpan('captra.tool',{runId:context.runId,tool:name,tenantId:context.tenantId}),startedAt=Date.now();await context.emit({type:'tool.started',capability:name,detail:tool.description,data:{input:parsed}})
     try{
       const value=tool.output.parse(await tool.execute(parsed,context))
-      await context.emit({type:'tool.completed',capability:name,detail:'Tool call completed'})
+      await context.emit({type:'tool.completed',capability:name,detail:'Tool call completed'});span.setAttribute('status','completed');span.end();context.telemetry.histogram?.('captra.tool.duration',Date.now()-startedAt,{tool:name,status:'completed'})
       return value as Output
     }catch(error){
-      await context.emit({type:'tool.failed',capability:name,detail:error instanceof Error?error.message:'Tool call failed'})
+      await context.emit({type:'tool.failed',capability:name,detail:error instanceof Error?error.message:'Tool call failed'});span.setAttribute('status','failed');span.end(error);context.telemetry.counter?.('captra.tool.failures',1,{tool:name})
       throw error
     }
   }}

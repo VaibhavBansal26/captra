@@ -115,6 +115,21 @@ const replay=await runtime.replay(runId)
 
 Completed tool calls are not repeated after recovery. `replay()` returns the durable run, ordered event trace, and checkpoint history for debugging or deterministic inspection.
 
+## Observability and evaluations
+
+Pass a `TelemetryAdapter` to capture run, tool, and model spans plus duration, failure, and token metrics. `InMemoryTelemetry` is included for local inspection and tests.
+
+```ts
+const telemetry=new InMemoryTelemetry()
+const runtime=createRuntime(app,{telemetry})
+
+const report=await runEvaluation(runtime,cases)
+enforceEvaluation(report,{minPassRate:.95,maxFailures:2})
+```
+
+`recordModel()` captures provider-neutral model interactions. `replayModel()` returns those responses deterministically during tests, eliminating API cost and model variance from regression suites.
+Use `createOpenTelemetryAdapter(tracer,meter)` to export the same signals through an existing OpenTelemetry SDK and exporter.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract

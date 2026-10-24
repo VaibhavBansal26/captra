@@ -1,7 +1,7 @@
 import { toJSONSchema,type ZodType } from 'zod'
 import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,type ViewReference } from './core'
 import type { MemoryScope } from './memory'
-import type { ModelAdapter,ModelMessage,ModelToolCall } from './models'
+import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models'
 import type { Tool } from './tools'
 
 export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number}
@@ -36,7 +36,8 @@ async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,i
     }
     if(state.step>maxSteps)throw new Error(`Agent step budget exceeded (${maxSteps})`)
     await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${state.step}`,data:{step:state.step,maxSteps,toolCalls:state.toolCalls,tokens:state.tokens}})
-    const response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,providerState:state.providerState})
+    const modelSpan=context.telemetry.startSpan('captra.model',{runId:context.runId,capability:definition.name,step:state.step}),modelStarted=Date.now();let response:ModelResponse
+    try{response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,providerState:state.providerState});modelSpan.setAttribute('model',response.model);modelSpan.setAttribute('inputTokens',response.usage?.inputTokens);modelSpan.setAttribute('outputTokens',response.usage?.outputTokens);modelSpan.end();context.telemetry.histogram?.('captra.model.duration',Date.now()-modelStarted,{capability:definition.name,model:response.model});context.telemetry.counter?.('captra.model.tokens',(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0),{capability:definition.name,model:response.model})}catch(error){modelSpan.end(error);context.telemetry.counter?.('captra.model.failures',1,{capability:definition.name});throw error}
     state.providerState=response.providerState
     state.tokens+=(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0)
     if(state.tokens>maxTokens)throw new Error(`Agent token budget exceeded (${maxTokens})`)
