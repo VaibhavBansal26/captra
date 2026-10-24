@@ -7,8 +7,11 @@ const repository=resolve(import.meta.dirname,'..'),temporary=mkdtempSync(join(re
 try{
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'create',project],repository)
   const manifest=JSON.parse(readFileSync(join(project,'package.json'),'utf8'))
+  const frameworkManifest=JSON.parse(readFileSync(join(repository,'packages/captra/package.json'),'utf8'))
   if(manifest.name!=='my-starter')throw new Error(`Unexpected scaffold package name: ${manifest.name}`)
   if(!manifest.dependencies.captra)throw new Error('Scaffold is missing the captra framework package')
+  const expectedFrameworkRange=`^${frameworkManifest.version}`
+  if(manifest.dependencies.captra!==expectedFrameworkRange)throw new Error(`Scaffold uses captra ${manifest.dependencies.captra}; expected ${expectedFrameworkRange}`)
   for(const file of ['src/captra.app.ts','src/client.ts','src/server.ts','src/App.tsx'])if(readFileSync(join(project,file),'utf8').includes('@captra-ai/'))throw new Error(`${file} bypasses the captra umbrella package`)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'doctor',project],repository)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'add','capability','summarize-notes',project],repository)
