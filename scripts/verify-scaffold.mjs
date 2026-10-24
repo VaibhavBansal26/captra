@@ -10,8 +10,7 @@ try{
   const frameworkManifest=JSON.parse(readFileSync(join(repository,'packages/captra/package.json'),'utf8'))
   if(manifest.name!=='my-starter')throw new Error(`Unexpected scaffold package name: ${manifest.name}`)
   if(!manifest.dependencies.captra)throw new Error('Scaffold is missing the captra framework package')
-  const expectedFrameworkRange=`^${frameworkManifest.version}`
-  if(manifest.dependencies.captra!==expectedFrameworkRange)throw new Error(`Scaffold uses captra ${manifest.dependencies.captra}; expected ${expectedFrameworkRange}`)
+  if(!satisfiesCaret(manifest.dependencies.captra,frameworkManifest.version))throw new Error(`Scaffold range ${manifest.dependencies.captra} does not include captra ${frameworkManifest.version}`)
   for(const file of ['src/captra.app.ts','src/client.ts','src/server.ts','src/App.tsx'])if(readFileSync(join(project,file),'utf8').includes('@captra-ai/'))throw new Error(`${file} bypasses the captra umbrella package`)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'doctor',project],repository)
   run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'add','capability','summarize-notes',project],repository)
@@ -25,3 +24,5 @@ try{
 
 function run(command,args,cwd){const result=spawnSync(command,args,{cwd,stdio:'pipe',encoding:'utf8'});if(result.status!==0)throw new Error(`${command} ${args.join(' ')} failed\n${result.stdout}\n${result.stderr}`)}
 function exists(file){try{readFileSync(join(project,file));return true}catch{return false}}
+function satisfiesCaret(range,version){if(typeof range!=='string'||!range.startsWith('^'))return false;const minimum=parseVersion(range.slice(1)),candidate=parseVersion(version);if(!minimum||!candidate)return false;const compare=(left,right)=>left[0]-right[0]||left[1]-right[1]||left[2]-right[2],upper=minimum[0]>0?[minimum[0]+1,0,0]:minimum[1]>0?[0,minimum[1]+1,0]:[0,0,minimum[2]+1];return compare(candidate,minimum)>=0&&compare(candidate,upper)<0}
+function parseVersion(value){const match=/^(\d+)\.(\d+)\.(\d+)$/.exec(value);return match?[Number(match[1]),Number(match[2]),Number(match[3])]:null}
