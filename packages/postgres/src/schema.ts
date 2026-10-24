@@ -1,0 +1,49 @@
+export const postgresSchema=`
+CREATE TABLE IF NOT EXISTS captra_runs (
+  id uuid PRIMARY KEY,
+  app text NOT NULL,
+  app_version text NOT NULL,
+  capability text NOT NULL,
+  status text NOT NULL,
+  tenant_id text NOT NULL,
+  user_id text NOT NULL,
+  project_id text NOT NULL,
+  session_id text,
+  input jsonb NOT NULL,
+  validated_input jsonb,
+  output jsonb,
+  approval text,
+  error text,
+  idempotency_key text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS captra_runs_idempotency
+  ON captra_runs (tenant_id,idempotency_key) WHERE idempotency_key IS NOT NULL;
+CREATE INDEX IF NOT EXISTS captra_runs_identity ON captra_runs (tenant_id,user_id,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS captra_events (
+  id uuid PRIMARY KEY,
+  run_id uuid NOT NULL REFERENCES captra_runs(id) ON DELETE CASCADE,
+  sequence integer NOT NULL,
+  protocol text NOT NULL,
+  type text NOT NULL,
+  capability text NOT NULL,
+  detail text NOT NULL,
+  data jsonb,
+  at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(run_id,sequence)
+);
+
+CREATE TABLE IF NOT EXISTS captra_memories (
+  id uuid PRIMARY KEY,
+  tenant_id text NOT NULL,
+  scope text NOT NULL,
+  owner_id text NOT NULL,
+  type text NOT NULL,
+  content text NOT NULL,
+  confidence double precision NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_memories_recall ON captra_memories (tenant_id,scope,owner_id,created_at DESC);
+`

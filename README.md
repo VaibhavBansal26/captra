@@ -60,10 +60,30 @@ export default defineApp({
 - `builtinTools` — remember, recall, forget, and JSON HTTP operations
 - `useCaptra()` / `useCapability()` — React orchestration hooks
 
+## Durable PostgreSQL runtime
+
+Captra accepts any `pg`-compatible client exposing `query(text, values)`, so the adapter is not tied to a specific Postgres vendor:
+
+```ts
+import { createRuntime } from '@captra/core'
+import { migrateCaptra, PostgresMemoryStore, PostgresRunStore } from '@captra/postgres'
+
+await migrateCaptra(pool)
+
+const runtime=createRuntime(app,{
+  runs:new PostgresRunStore(pool),
+  memory:new PostgresMemoryStore(pool),
+  authorize:async (identity,permissions)=>policy.allows(identity,permissions),
+})
+```
+
+The schema includes tenant-scoped memory indexes, durable event history, and a database-enforced idempotency key. Run event sequence allocation is serialized on the run row to remain safe under concurrent workers.
+
 ## Packages
 
 - `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests
 - `@captra/client` — typed HTTP client and live event streaming
+- `@captra/postgres` — durable run, event, and multi-level memory storage
 - `@captra/react` — hooks and safe capability-view rendering
 - `@captra/server` — Web Standard backend handler
 - `@captra/cli` — create, dev, build, test, and inspect commands
