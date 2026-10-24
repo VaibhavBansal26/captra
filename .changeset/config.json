@@ -7,5 +7,5 @@
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
-  "ignore": ["@captra/customer-ops"]
+  "ignore": ["@captra-ai/customer-ops"]
 }
