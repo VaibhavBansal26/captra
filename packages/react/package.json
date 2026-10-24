@@ -1,15 +1,45 @@
 {
   "name": "@captra/react",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "React hooks and safe capability views for Captra.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/react" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/react"
+  },
   "type": "module",
-  "main": "./dist/index.js", "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist"], "publishConfig": { "access": "public" },
-  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
-  "peerDependencies": { "@captra/client": "^0.1.0", "@captra/core": "^0.1.0", "react": ">=18" },
-  "peerDependenciesMeta": { "@captra/client": { "optional": true } },
-  "devDependencies": { "react-dom": "^19.0.0", "vitest": "^4.0.0", "zod": "^4.0.0" }
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@captra/client": ">=0.2.0 <1",
+    "@captra/core": ">=0.2.0 <1",
+    "react": ">=18"
+  },
+  "peerDependenciesMeta": {
+    "@captra/client": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "react-dom": "^19.0.0",
+    "vitest": "^4.0.0",
+    "zod": "^4.0.0"
+  }
 }

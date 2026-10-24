@@ -1,12 +1,24 @@
 {
   "name": "create-captra",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Create a new Captra application from the command line.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/create-captra" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/create-captra"
+  },
   "type": "module",
-  "bin": { "create-captra": "./bin/create-captra.js" },
-  "files": ["bin"],
-  "dependencies": { "@captra/cli": "^0.1.0" },
-  "publishConfig": { "access": "public" }
+  "bin": {
+    "create-captra": "./bin/create-captra.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "dependencies": {
+    "@captra/cli": "^0.2.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

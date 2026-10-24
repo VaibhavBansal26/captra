@@ -1,11 +1,22 @@
 {
   "name": "@captra/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Create, inspect, develop, test, and build Captra applications.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/cli" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/cli"
+  },
   "type": "module",
-  "bin": { "captra": "./bin/captra.js" },
-  "files": ["bin", "templates"],
-  "publishConfig": { "access": "public" }
+  "bin": {
+    "captra": "./bin/captra.js"
+  },
+  "files": [
+    "bin",
+    "templates"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 }

@@ -1,14 +1,38 @@
 {
   "name": "@captra/postgres",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Durable PostgreSQL run and memory adapters for Captra.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/postgres" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/postgres"
+  },
   "type": "module",
-  "main": "./dist/index.js", "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist"], "publishConfig": { "access": "public" },
-  "peerDependencies": { "@captra/core": "^0.1.0" },
-  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" },
-  "devDependencies": { "@types/pg": "^8.23.1", "pg": "^8.23.1", "vitest": "^4.0.4" }
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@captra/core": ">=0.2.0 <1"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "pg": "^8.23.1",
+    "vitest": "^4.0.4"
+  }
 }
