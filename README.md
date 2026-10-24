@@ -11,6 +11,8 @@ npm install
 npx captra dev
 ```
 
+The starter is full-stack: Vite + React on port 5173, a Captra Node runtime on port 8787, typed HTTP transport, scoped memory, a local component registry, and a capability test. `npm run build` verifies both browser and server output; `npm test` exercises the contract and memory behavior.
+
 ```tsx
 export const refund=capability({
   name:'refund',

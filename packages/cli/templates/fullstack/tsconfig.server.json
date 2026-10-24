@@ -1,0 +1,4 @@
+{
+  "compilerOptions":{"target":"ES2022","lib":["ES2022","DOM"],"module":"NodeNext","moduleResolution":"NodeNext","strict":true,"jsx":"react-jsx","skipLibCheck":true,"types":["node"],"outDir":"dist-server","rootDir":"src"},
+  "include":["src/server.ts","src/captra.app.ts","src/capabilities/**/*.tsx"]
+}
