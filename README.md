@@ -99,6 +99,18 @@ Common agent states can be rendered with accessible, unstyled primitives that ex
 
 Use `RunStatus`, `ApprovalPanel`, and `EventTimeline` independently when a product needs a custom layout. Labels, empty states, timestamps, approval copy, and CSS classes remain application-controlled.
 
+For a remote backend, one typed hook owns the entire run lifecycle:
+
+```tsx
+const refund=useRemoteCapability(client,'refund')
+
+await refund.stream({amount:48})
+// refund.result, events, pending, error
+// refund.approve(), reject(), cancel(), refreshEvents(), reset()
+```
+
+The capability name, input, and output are inferred from the same app contract used by `createCaptraClient`. Streaming trace events update independently before the final structured result arrives.
+
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts

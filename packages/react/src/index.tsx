@@ -1,5 +1,6 @@
 import { createElement, useCallback, useMemo, useState, type ComponentType, type ReactNode } from 'react'
-import { createRuntime, type AgentApp, type CapabilityResult, type CaptraEvent, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra/core'
+import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra/core'
+import type { CaptraClient } from '@captra/client'
 
 export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approve?:(result:CapabilityResult)=>Promise<boolean>}
 export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
@@ -33,13 +34,18 @@ export function useCapability(app:AgentApp,name:string,options:UseCaptraOptions=
   return {...state,run:useCallback((input:unknown)=>state.run(name,input),[state.run,name])}
 }
 
-export type RemoteCaptraClient={execute:(name:any,input:any)=>Promise<RemoteCapabilityResult>;approve:(id:string)=>Promise<RemoteCapabilityResult>;reject:(id:string)=>Promise<RemoteCapabilityResult>}
-export function useRemoteCapability(client:RemoteCaptraClient,name:string){
-  const [result,setResult]=useState<RemoteCapabilityResult|null>(null),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null)
-  const run=useCallback(async(input:unknown)=>{setPending(true);setError(null);try{const next=await client.execute(name,input);setResult(next);return next}catch(caught){setError(caught instanceof Error?caught.message:'Unknown runtime error');return null}finally{setPending(false)}},[client,name])
-  const approve=useCallback(async()=>{if(!result)return null;const next=await client.approve(result.run.id);setResult(next);return next},[client,result])
-  const reject=useCallback(async()=>{if(!result)return null;const next=await client.reject(result.run.id);setResult(next);return next},[client,result])
-  return {run,approve,reject,result,pending,error}
+export function useRemoteCapability<App extends AgentApp,Name extends CapabilityName<App>>(client:CaptraClient<App>,name:Name){
+  type Input=CapabilityInput<App,Name>;type Output=CapabilityValue<App,Name>;type Result=RemoteCapabilityResult<Output>
+  const [result,setResult]=useState<Result|null>(null),[events,setEvents]=useState<CaptraEvent[]>([]),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null)
+  const attempt=useCallback(async<T,>(operation:()=>Promise<T>)=>{setPending(true);setError(null);try{return await operation()}catch(caught){setError(caught instanceof Error?caught.message:'Unknown runtime error');return null}finally{setPending(false)}},[])
+  const run=useCallback((input:Input,idempotencyKey?:string)=>attempt(async()=>{const next=await client.execute(name,input,idempotencyKey) as Result;setResult(next);setEvents(next.trace);return next}),[attempt,client,name])
+  const stream=useCallback((input:Input,idempotencyKey?:string)=>attempt(async()=>{setEvents([]);let completed:Result|null=null;for await(const message of client.stream(name,input,idempotencyKey)){if(message.event==='trace')setEvents(current=>[...current,message.data]);else if(message.event==='result'){completed=message.data as Result;setResult(completed);setEvents(completed.trace)}else throw new Error(message.data.message)}return completed}),[attempt,client,name])
+  const approve=useCallback(()=>attempt(async()=>{if(!result)return null;const next=await client.approve(result.run.id) as Result;setResult(next);setEvents(next.trace);return next}),[attempt,client,result])
+  const reject=useCallback(()=>attempt(async()=>{if(!result)return null;const next=await client.reject(result.run.id) as Result;setResult(next);setEvents(next.trace);return next}),[attempt,client,result])
+  const cancel=useCallback(()=>attempt(async()=>{if(!result)return null;const next=await client.cancel(result.run.id);setResult(current=>current?{...current,run:next}:current);return next}),[attempt,client,result])
+  const refreshEvents=useCallback(()=>attempt(async()=>{if(!result)return [];const next=await client.events(result.run.id);setEvents(next);return next}),[attempt,client,result])
+  const reset=useCallback(()=>{setResult(null);setEvents([]);setError(null);setPending(false)},[])
+  return {run,stream,approve,reject,cancel,refreshEvents,reset,result,events,pending,error}
 }
 
 export const useCaptra = useAgentApp
