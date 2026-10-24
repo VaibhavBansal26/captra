@@ -10,7 +10,7 @@
   },
   "type": "module",
   "bin": {
-    "captra": "./bin/captra.js"
+    "captra": "bin/captra.js"
   },
   "files": [
     "bin",

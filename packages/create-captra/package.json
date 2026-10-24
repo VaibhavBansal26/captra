@@ -10,7 +10,7 @@
   },
   "type": "module",
   "bin": {
-    "create-captra": "./bin/create-captra.js"
+    "create-captra": "bin/create-captra.js"
   },
   "files": [
     "bin"
