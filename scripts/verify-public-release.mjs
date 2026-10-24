@@ -9,16 +9,17 @@ const packages=discoverPackages()
 const temporary=mkdtempSync(join(tmpdir(),'captra-public-release-'))
 const project=join(temporary,'public-smoke')
 const cache=join(temporary,'npm-cache')
+const propagationAttempts=24
 
 try{
   await verifyPublishedPackages()
   let created=false,lastFailure=''
-  for(let attempt=1;attempt<=12;attempt++){
+  for(let attempt=1;attempt<=propagationAttempts;attempt++){
     rmSync(project,{recursive:true,force:true})
     const result=spawnSync('npm',['create',`captra@${generator.version}`,'public-smoke','--yes','--cache',cache],{cwd:temporary,encoding:'utf8'})
     if(result.status===0){created=true;break}
     lastFailure=`${result.stdout}\n${result.stderr}`
-    if(attempt<12){console.log(`npm registry is still propagating create-captra@${generator.version}; retrying (${attempt}/12)`);await delay(15_000)}
+    if(attempt<propagationAttempts){console.log(`npm registry is still propagating create-captra@${generator.version}; retrying (${attempt}/${propagationAttempts})`);await delay(15_000)}
   }
   if(!created)throw new Error(`Public generator was unavailable after propagation retries:\n${lastFailure}`)
   run('npm',['install','--cache',cache],project)
@@ -41,7 +42,7 @@ function discoverPackages(){
 async function verifyPublishedPackages(){
   const pending=new Map(packages.map(manifest=>[manifest.name,manifest]))
   let lastFailures=[]
-  for(let attempt=1;attempt<=12&&pending.size>0;attempt++){
+  for(let attempt=1;attempt<=propagationAttempts&&pending.size>0;attempt++){
     lastFailures=[]
     for(const [name,manifest] of pending){
       const specifier=`${name}@${manifest.version}`
@@ -52,8 +53,8 @@ async function verifyPublishedPackages(){
         pending.delete(name)
       }else lastFailures.push(`${specifier}: ${result.stderr.trim()||`received ${String(published)}`}`)
     }
-    if(pending.size>0&&attempt<12){
-      console.log(`npm registry is still propagating ${pending.size} package(s); retrying (${attempt}/12)`)
+    if(pending.size>0&&attempt<propagationAttempts){
+      console.log(`npm registry is still propagating ${pending.size} package(s); retrying (${attempt}/${propagationAttempts})`)
       await delay(15_000)
     }
   }
