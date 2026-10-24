@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.5.2
+
+### Patch Changes
+
+- Update the full-stack starter to install the Captra 0.7 release line.
+
 ## 0.5.1
 
 ### Patch Changes
