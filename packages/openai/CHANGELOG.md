@@ -1,5 +1,11 @@
 # @captra-ai/openai
 
+## 0.3.1
+
+### Patch Changes
+
+- Add pre-inference token and cost reservations, atomic user and tenant quotas, provider output ceilings, typed budget failures, lifecycle events, and Devtools budget reporting.
+
 ## 0.3.0
 
 ### Patch Changes

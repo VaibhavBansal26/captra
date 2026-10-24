@@ -5,8 +5,9 @@ import type { Plan, PlannerAdapter } from './planner.js'
 export type ModelMessage={role:'system'|'user'|'assistant'|'tool';content:string;name?:string;toolCallId?:string;toolCalls?:readonly ModelToolCall[]}
 export type ModelTool={name:string;description:string;inputSchema:unknown}
 export type ModelToolCall={id:string;name:string;input:unknown}
-export type ModelRequest={messages:readonly ModelMessage[];tools?:readonly ModelTool[];signal?:AbortSignal;temperature?:number;providerState?:unknown}
-export type ModelResponse={text:string;toolCalls?:readonly ModelToolCall[];usage?:{inputTokens?:number;outputTokens?:number};model?:string;providerState?:unknown}
+export type ModelRequest={messages:readonly ModelMessage[];tools?:readonly ModelTool[];signal?:AbortSignal;temperature?:number;maxOutputTokens?:number;providerState?:unknown}
+export type ModelUsage={inputTokens?:number;outputTokens?:number;cachedInputTokens?:number;reasoningTokens?:number;costUsd?:number}
+export type ModelResponse={text:string;toolCalls?:readonly ModelToolCall[];usage?:ModelUsage;model?:string;providerState?:unknown}
 export interface ModelAdapter { generate(request:ModelRequest):Promise<ModelResponse>; stream?(request:ModelRequest):AsyncIterable<string> }
 export type ModelRecording={id:string;request:ModelRequest;response:ModelResponse;createdAt:number}
 export interface ModelRecordingStore{append(record:ModelRecording):Promise<void>;list():Promise<ModelRecording[]>}

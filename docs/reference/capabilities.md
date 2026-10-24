@@ -28,12 +28,18 @@ const researcher=agent({
   output:ResearchReport,
   model,
   tools:[searchDocs,fetchPage],
-  budget:{maxSteps:6,maxToolCalls:10,maxTokens:20_000},
+  budget:{
+    maxSteps:6,
+    maxToolCalls:10,
+    maxTokens:20_000,
+    maxOutputTokens:2_000,
+    user:{tokens:100_000,windowMs:86_400_000},
+  },
   view:'ResearchReport',
 })
 ```
 
-An agent receives the same runtime services as any capability. Its budgets limit model turns, tool calls, and token usage. Tool schemas are sent to the model, but calls still pass through Captra validation, authorization, hooks, events, and checkpointing.
+An agent receives the same runtime services as any capability. Its budgets limit model turns, tool calls, token usage, cost, and shared user or tenant quotas. Captra reserves capacity before inference and commits actual provider usage afterward. See [token and cost budgets](/reference/budgets).
 
 ## Structured generation
 

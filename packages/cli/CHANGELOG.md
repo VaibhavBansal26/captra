@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.5.1
+
+### Patch Changes
+
+- Generate starters against Captra 0.6 so new projects receive reservation-based budget enforcement.
+
 ## 0.5.0
 
 ### Minor Changes

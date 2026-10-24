@@ -1,5 +1,17 @@
 # captra
 
+## 0.6.0
+
+### Minor Changes
+
+- Add pre-inference token and cost reservations, atomic user and tenant quotas, provider output ceilings, typed budget failures, lifecycle events, and Devtools budget reporting.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.4.1
+  - @captra-ai/openai@0.3.1
+
 ## 0.5.1
 
 ### Patch Changes

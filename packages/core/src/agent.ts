@@ -3,8 +3,9 @@ import { capability,type Capability,type ExecutionPolicy,type RuntimeContext,typ
 import type { MemoryScope } from './memory.js'
 import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './models.js'
 import type { Tool } from './tools.js'
+import { BudgetExceededError,estimateModelTokens,type BudgetQuota } from './budgets.js'
 
-export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number}
+export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number;maxInputTokens?:number;maxOutputTokens?:number;maxCostUsd?:number;user?:BudgetQuota;tenant?:BudgetQuota;estimateTokens?:(messages:readonly ModelMessage[])=>number;estimateCostUsd?:(inputTokens:number,outputTokens:number)=>number}
 export type AgentDefinition<Input,Output,Name extends string=string>={
   name:Name;description:string;instructions:string;input:ZodType<Input>;output:ZodType<Output>;model:ModelAdapter
   tools?:readonly Tool<any,any>[];memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:'never'|'required'
@@ -18,9 +19,9 @@ export function agent<const Name extends string,Input,Output>(definition:AgentDe
 }
 
 async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,input:Input,context:RuntimeContext,allowed:Set<string>,tools:{name:string;description:string;inputSchema:unknown}[]):Promise<Output>{
-  const maxSteps=definition.budget?.maxSteps??8,maxToolCalls=definition.budget?.maxToolCalls??16,maxTokens=definition.budget?.maxTokens??50_000
+  const maxSteps=definition.budget?.maxSteps??8,maxToolCalls=definition.budget?.maxToolCalls??16,maxTokens=definition.budget?.maxTokens??50_000,maxInputTokens=definition.budget?.maxInputTokens??maxTokens,maxOutputTokens=definition.budget?.maxOutputTokens??4_096,maxCostUsd=definition.budget?.maxCostUsd??Number.POSITIVE_INFINITY
   const memory=context.memories.length?`\nRelevant scoped memory:\n${context.memories.map(item=>`- [${item.type}] ${item.content}`).join('\n')}`:''
-  const initial:AgentState={version:1,step:1,messages:[{role:'system',content:`${definition.instructions}${memory}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}],toolCalls:0,tokens:0}
+  const initial:AgentState={version:1,step:1,messages:[{role:'system',content:`${definition.instructions}${memory}\nWhen finished, return only JSON matching the required output schema: ${JSON.stringify(toJSONSchema(definition.output))}`},{role:'user',content:JSON.stringify(input)}],toolCalls:0,tokens:0,inputTokens:0,outputTokens:0,costUsd:0}
   const key=`agent/${definition.name}/state`,restored=await context.checkpoints.load(key),state=isAgentState(restored?.state)?restored.state:initial
   for(;;){
     if(state.pending){
@@ -35,12 +36,26 @@ async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,i
       state.pending=undefined;state.step++;await context.checkpoints.save(key,state);continue
     }
     if(state.step>maxSteps)throw new Error(`Agent step budget exceeded (${maxSteps})`)
-    await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${state.step}`,data:{step:state.step,maxSteps,toolCalls:state.toolCalls,tokens:state.tokens}})
+    await context.emit({type:'agent.step',capability:definition.name,detail:`Agent step ${state.step}`,data:{step:state.step,maxSteps,toolCalls:state.toolCalls,tokens:state.tokens,costUsd:state.costUsd}})
+    const estimatedInput=Math.max(1,Math.ceil((definition.budget?.estimateTokens??estimateModelTokens)(state.messages))),remainingTokens=maxTokens-state.tokens
+    if(state.inputTokens+estimatedInput>maxInputTokens)await exceed(context,definition.name,new BudgetExceededError('run','tokens',maxInputTokens,state.inputTokens,estimatedInput))
+    const reservedOutput=Math.min(maxOutputTokens,remainingTokens-estimatedInput)
+    if(reservedOutput<=0)await exceed(context,definition.name,new BudgetExceededError('run','tokens',maxTokens,state.tokens,estimatedInput))
+    const estimatedCost=definition.budget?.estimateCostUsd?.(estimatedInput,reservedOutput)??0
+    if(state.costUsd+estimatedCost>maxCostUsd)await exceed(context,definition.name,new BudgetExceededError('run','costUsd',maxCostUsd,state.costUsd,estimatedCost))
+    await context.emit({type:'budget.checked',capability:definition.name,detail:'Model-call budget checked',data:{estimatedInputTokens:estimatedInput,reservedOutputTokens:reservedOutput,estimatedCostUsd:estimatedCost,remainingTokens}})
+    let reservation
+    try{reservation=await context.budgets.reserve({runId:context.runId,identity:context,amount:{tokens:estimatedInput+reservedOutput,costUsd:estimatedCost},limits:{user:definition.budget?.user,tenant:definition.budget?.tenant}})}catch(error){if(error instanceof BudgetExceededError)await exceed(context,definition.name,error);throw error}
+    await context.emit({type:'budget.reserved',capability:definition.name,detail:'Reserved model-call budget',data:{reservationId:reservation.id,tokens:reservation.amount.tokens,costUsd:reservation.amount.costUsd}})
     const modelSpan=context.telemetry.startSpan('captra.model',{runId:context.runId,capability:definition.name,step:state.step}),modelStarted=Date.now();let response:ModelResponse
-    try{response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,providerState:state.providerState});modelSpan.setAttribute('model',response.model);modelSpan.setAttribute('inputTokens',response.usage?.inputTokens);modelSpan.setAttribute('outputTokens',response.usage?.outputTokens);modelSpan.end();context.telemetry.histogram?.('captra.model.duration',Date.now()-modelStarted,{capability:definition.name,model:response.model});context.telemetry.counter?.('captra.model.tokens',(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0),{capability:definition.name,model:response.model})}catch(error){modelSpan.end(error);context.telemetry.counter?.('captra.model.failures',1,{capability:definition.name});throw error}
+    try{response=await definition.model.generate({messages:state.messages,tools,signal:context.signal,temperature:definition.temperature,maxOutputTokens:reservedOutput,providerState:state.providerState});modelSpan.setAttribute('model',response.model);modelSpan.setAttribute('inputTokens',response.usage?.inputTokens);modelSpan.setAttribute('outputTokens',response.usage?.outputTokens);modelSpan.end();context.telemetry.histogram?.('captra.model.duration',Date.now()-modelStarted,{capability:definition.name,model:response.model});context.telemetry.counter?.('captra.model.tokens',(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0),{capability:definition.name,model:response.model})}catch(error){await context.budgets.release(reservation.id);await context.emit({type:'budget.released',capability:definition.name,detail:'Released failed model-call reservation',data:{reservationId:reservation.id}});modelSpan.end(error);context.telemetry.counter?.('captra.model.failures',1,{capability:definition.name});throw error}
     state.providerState=response.providerState
-    state.tokens+=(response.usage?.inputTokens??0)+(response.usage?.outputTokens??0)
-    if(state.tokens>maxTokens)throw new Error(`Agent token budget exceeded (${maxTokens})`)
+    const actualInput=response.usage?.inputTokens??estimatedInput,actualOutput=response.usage?.outputTokens??0,actualTokens=actualInput+actualOutput,actualCost=response.usage?.costUsd??definition.budget?.estimateCostUsd?.(actualInput,actualOutput)??0
+    await context.budgets.commit(reservation.id,{tokens:actualTokens,costUsd:actualCost});await context.emit({type:'budget.committed',capability:definition.name,detail:'Committed actual model usage',data:{reservationId:reservation.id,inputTokens:actualInput,outputTokens:actualOutput,tokens:actualTokens,costUsd:actualCost,releasedTokens:Math.max(0,reservation.amount.tokens-actualTokens),releasedCostUsd:Math.max(0,reservation.amount.costUsd-actualCost)}})
+    state.inputTokens+=actualInput;state.outputTokens+=actualOutput;state.tokens+=actualTokens;state.costUsd+=actualCost
+    if(state.tokens>maxTokens)await exceed(context,definition.name,new BudgetExceededError('run','tokens',maxTokens,state.tokens-actualTokens,actualTokens))
+    if(state.inputTokens>maxInputTokens)await exceed(context,definition.name,new BudgetExceededError('run','tokens',maxInputTokens,state.inputTokens-actualInput,actualInput))
+    if(state.costUsd>maxCostUsd)await exceed(context,definition.name,new BudgetExceededError('run','costUsd',maxCostUsd,state.costUsd-actualCost,actualCost))
     if(response.toolCalls?.length){
       if(state.toolCalls+response.toolCalls.length>maxToolCalls)throw new Error(`Agent tool-call budget exceeded (${maxToolCalls})`)
       state.messages.push({role:'assistant',content:response.text,toolCalls:response.toolCalls});state.pending={calls:[...response.toolCalls],next:0};await context.checkpoints.save(key,state)
@@ -49,10 +64,11 @@ async function runAgent<Input,Output>(definition:AgentDefinition<Input,Output>,i
     let candidate:unknown
     try{candidate=JSON.parse(response.text)}catch{throw new Error('Agent returned invalid JSON output')}
     const output=definition.output.parse(candidate)
-    await context.emit({type:'agent.completed',capability:definition.name,detail:`Completed in ${state.step} steps`,data:{steps:state.step,toolCalls:state.toolCalls,tokens:state.tokens,model:response.model}})
+    await context.emit({type:'agent.completed',capability:definition.name,detail:`Completed in ${state.step} steps`,data:{steps:state.step,toolCalls:state.toolCalls,tokens:state.tokens,inputTokens:state.inputTokens,outputTokens:state.outputTokens,costUsd:state.costUsd,model:response.model}})
     return output
   }
 }
 
-type AgentState={version:1;step:number;messages:ModelMessage[];toolCalls:number;tokens:number;providerState?:unknown;pending?:{calls:ModelToolCall[];next:number}}
-function isAgentState(value:unknown):value is AgentState{const state=value as Partial<AgentState>|undefined;return !!state&&state.version===1&&typeof state.step==='number'&&Array.isArray(state.messages)&&typeof state.toolCalls==='number'&&typeof state.tokens==='number'}
+type AgentState={version:1;step:number;messages:ModelMessage[];toolCalls:number;tokens:number;inputTokens:number;outputTokens:number;costUsd:number;providerState?:unknown;pending?:{calls:ModelToolCall[];next:number}}
+function isAgentState(value:unknown):value is AgentState{const state=value as Partial<AgentState>|undefined;if(!state||state.version!==1||typeof state.step!=='number'||!Array.isArray(state.messages)||typeof state.toolCalls!=='number'||typeof state.tokens!=='number')return false;state.inputTokens??=state.tokens;state.outputTokens??=0;state.costUsd??=0;return true}
+async function exceed(context:RuntimeContext,capability:string,error:BudgetExceededError):Promise<never>{await context.emit({type:'budget.exceeded',capability,detail:error.message,data:{code:error.code,scope:error.scope,resource:error.resource,limit:error.limit,used:error.used,requested:error.requested,retryAt:error.retryAt}});throw error}
