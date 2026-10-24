@@ -5,8 +5,8 @@ import type { Plan, PlannerAdapter } from './planner'
 export type ModelMessage={role:'system'|'user'|'assistant'|'tool';content:string;name?:string;toolCallId?:string;toolCalls?:readonly ModelToolCall[]}
 export type ModelTool={name:string;description:string;inputSchema:unknown}
 export type ModelToolCall={id:string;name:string;input:unknown}
-export type ModelRequest={messages:readonly ModelMessage[];tools?:readonly ModelTool[];signal?:AbortSignal;temperature?:number}
-export type ModelResponse={text:string;toolCalls?:readonly ModelToolCall[];usage?:{inputTokens?:number;outputTokens?:number};model?:string}
+export type ModelRequest={messages:readonly ModelMessage[];tools?:readonly ModelTool[];signal?:AbortSignal;temperature?:number;providerState?:unknown}
+export type ModelResponse={text:string;toolCalls?:readonly ModelToolCall[];usage?:{inputTokens?:number;outputTokens?:number};model?:string;providerState?:unknown}
 export interface ModelAdapter { generate(request:ModelRequest):Promise<ModelResponse>; stream?(request:ModelRequest):AsyncIterable<string> }
 
 export function createStructuredGenerator(model:ModelAdapter){

@@ -61,6 +61,17 @@ export const researcher=agent({
 
 This preserves one mental model for developers: deterministic capabilities and model-directed agents use the same schemas, memory, tools, approvals, events, workers, and UI boundary.
 
+Use the OpenAI Responses API through the provider-neutral model contract:
+
+```ts
+import { createOpenAI } from '@captra/openai'
+
+const model=createOpenAI({model:'gpt-5.4'})
+```
+
+The adapter supports function calls, response continuation, usage accounting, streaming, cancellation, and bounded retries for rate limits and transient server errors.
+Create it only in trusted server code; never expose `OPENAI_API_KEY` in a browser bundle.
+
 ## Runtime primitives
 
 - `capability()` — the typed user-facing action contract
@@ -109,6 +120,7 @@ await worker.runOnce()
 - `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests
 - `@captra/client` — typed HTTP client and live event streaming
 - `@captra/postgres` — durable run, event, and multi-level memory storage
+- `@captra/openai` — OpenAI Responses API generation, tools, continuation, usage, and streaming
 - `@captra/react` — hooks and safe capability-view rendering
 - `@captra/server` — Web Standard backend handler
 - `@captra/cli` — create, dev, build, test, and inspect commands

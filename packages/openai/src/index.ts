@@ -1,0 +1,25 @@
+import type { ModelAdapter,ModelMessage,ModelRequest,ModelResponse } from '@captra/core'
+
+export type OpenAIOptions={model:string;apiKey?:string;baseUrl?:string;organization?:string;project?:string;fetch?:typeof fetch;headers?:HeadersInit;maxRetries?:number}
+type OpenAIState={responseId:string;messageCount:number}
+type ResponseItem={type:string;id?:string;call_id?:string;name?:string;arguments?:string;content?:Array<{type:string;text?:string}>}
+type OpenAIResponse={id:string;model?:string;output_text?:string;output?:ResponseItem[];usage?:{input_tokens?:number;output_tokens?:number};error?:{message?:string}}
+
+export function createOpenAI(options:OpenAIOptions):ModelAdapter{
+  const request=options.fetch??globalThis.fetch,baseUrl=(options.baseUrl??'https://api.openai.com/v1').replace(/\/$/,'')
+  const apiKey=options.apiKey??(globalThis as typeof globalThis&{process?:{env?:Record<string,string|undefined>}}).process?.env?.OPENAI_API_KEY
+  if(!apiKey)throw new Error('OpenAI API key is required')
+  const headers={'content-type':'application/json',authorization:`Bearer ${apiKey}`,...(options.organization?{'openai-organization':options.organization}:{}),...(options.project?{'openai-project':options.project}:{}),...options.headers}
+  const bodyFor=(input:ModelRequest,stream=false)=>{const state=isState(input.providerState)?input.providerState:undefined;return {model:options.model,input:toInput(state?input.messages.slice(state.messageCount).filter(message=>message.role==='tool'):input.messages),...(state?{previous_response_id:state.responseId}:{}),...(input.tools?.length?{tools:input.tools.map(tool=>({type:'function',name:tool.name,description:tool.description,parameters:tool.inputSchema,strict:false}))}:{}),...(input.temperature===undefined?{}:{temperature:input.temperature}),...(stream?{stream:true}:{})}}
+  const send=async(body:unknown,signal?:AbortSignal)=>{for(let attempt=0;;attempt++){const response=await request(`${baseUrl}/responses`,{method:'POST',headers,body:JSON.stringify(body),signal});if(![429,500,502,503,504].includes(response.status)||attempt>=(options.maxRetries??2))return response;const retryAfter=Number(response.headers.get('retry-after'));await delay(Number.isFinite(retryAfter)?retryAfter*1000:250*2**attempt,signal)}}
+  return {
+    async generate(input){const response=await send(bodyFor(input),input.signal);const data=await response.json() as OpenAIResponse;if(!response.ok)throw new Error(data.error?.message??`OpenAI request failed: ${response.status}`);return fromResponse(data,input.messages.length)},
+    async *stream(input){const response=await send(bodyFor(input,true),input.signal);if(!response.ok||!response.body){const text=await response.text();throw new Error(text||`OpenAI stream failed: ${response.status}`)}const reader=response.body.pipeThrough(new TextDecoderStream()).getReader();let buffer='';for(;;){const {done,value}=await reader.read();buffer+=value??'';const frames=buffer.split('\n\n');buffer=frames.pop()??'';for(const frame of frames){const raw=frame.split('\n').filter(line=>line.startsWith('data:')).map(line=>line.slice(5).trim()).join('');if(!raw||raw==='[DONE]')continue;const event=JSON.parse(raw) as {type?:string;delta?:string};if(event.type==='response.output_text.delta'&&event.delta)yield event.delta}if(done)break}}
+  }
+}
+
+function isState(value:unknown):value is OpenAIState{return !!value&&typeof value==='object'&&typeof (value as OpenAIState).responseId==='string'&&typeof (value as OpenAIState).messageCount==='number'}
+function toInput(messages:readonly ModelMessage[]){const input:unknown[]=[];for(const message of messages){if(message.role==='tool'){input.push({type:'function_call_output',call_id:message.toolCallId,output:message.content});continue}if(message.toolCalls?.length){for(const call of message.toolCalls)input.push({type:'function_call',call_id:call.id,name:call.name,arguments:JSON.stringify(call.input)});continue}input.push({role:message.role==='system'?'developer':message.role,content:message.content})}return input}
+function fromResponse(data:OpenAIResponse,messageCount:number):ModelResponse{const calls=(data.output??[]).filter(item=>item.type==='function_call').map(item=>({id:item.call_id??item.id??crypto.randomUUID(),name:item.name??'',input:parseArguments(item.arguments)}));const fallback=(data.output??[]).flatMap(item=>item.content??[]).filter(content=>content.type==='output_text').map(content=>content.text??'').join('');return {text:data.output_text??fallback,toolCalls:calls.length?calls:undefined,usage:{inputTokens:data.usage?.input_tokens,outputTokens:data.usage?.output_tokens},model:data.model,providerState:{responseId:data.id,messageCount}}}
+function parseArguments(value?:string){try{return JSON.parse(value??'{}')}catch{throw new Error('OpenAI returned invalid tool arguments') }}
+function delay(ms:number,signal?:AbortSignal){return new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,ms);signal?.addEventListener('abort',()=>{clearTimeout(timer);reject(signal.reason??new Error('Aborted'))},{once:true})})}
