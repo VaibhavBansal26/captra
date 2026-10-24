@@ -79,6 +79,16 @@ const runtime=createRuntime(app,{
 
 The schema includes tenant-scoped memory indexes, durable event history, and a database-enforced idempotency key. Run event sequence allocation is serialized on the run row to remain safe under concurrent workers.
 
+Background runs use leased queue jobs, allowing another worker to recover work after a crashed worker's lease expires:
+
+```ts
+const queue=new PostgresWorkQueue(pool)
+await runtime.enqueue({capability:'build-report',input,identity},queue)
+
+const worker=createWorker({runtime,queue,workerId:process.env.WORKER_ID})
+await worker.runOnce()
+```
+
 ## Packages
 
 - `@captra/core` — contracts, runtime, durable runs, memory, events, planners, manifests

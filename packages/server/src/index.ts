@@ -1,12 +1,13 @@
-import { compileManifest, type Runtime } from '@captra/core'
+import { compileManifest, type Runtime, type WorkQueue } from '@captra/core'
 
 export type AuthResolver=(request:Request)=>Promise<{tenantId:string;userId:string;projectId:string;sessionId?:string}>
-export function createCaptraHandler(runtime:Runtime,options:{auth:AuthResolver}){
+export function createCaptraHandler(runtime:Runtime,options:{auth:AuthResolver;queue?:WorkQueue}){
   return async(request:Request):Promise<Response>=>{
     const url=new URL(request.url),path=url.pathname.replace(/\/$/,'')
     try{
       if(request.method==='GET'&&path.endsWith('/manifest'))return json(compileManifest(runtime.app))
       const identity=await options.auth(request)
+      if(request.method==='POST'&&path.endsWith('/runs/queue')){if(!options.queue)return json({error:'Background queue is not configured'},501);const body=await request.json() as {capability:string;input:unknown;idempotencyKey?:string;maxAttempts?:number;availableAt?:number};const {maxAttempts,availableAt,...run}=body;return json(await runtime.enqueue({...run,identity},options.queue,{maxAttempts,availableAt}),202)}
       if(request.method==='POST'&&path.endsWith('/runs/stream')){const body=await request.json() as {capability:string;input:unknown;idempotencyKey?:string};return streamRun(runtime,{...body,identity})}
       if(request.method==='POST'&&path.endsWith('/runs')){const body=await request.json() as {capability:string;input:unknown;idempotencyKey?:string};return json(await runtime.execute({...body,identity}),202)}
       const approval=path.match(/\/runs\/([^/]+)\/(approve|reject)$/)

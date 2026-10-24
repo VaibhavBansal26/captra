@@ -9,6 +9,7 @@ export function createCaptraClient(options:CaptraClientOptions){
   return {
     manifest:()=>call('/manifest'),
     execute:(capability:string,input:unknown,idempotencyKey?:string)=>call('/runs',{method:'POST',body:JSON.stringify({capability,input,idempotencyKey})}) as Promise<CapabilityResult>,
+    enqueue:(capability:string,input:unknown,options:{idempotencyKey?:string;maxAttempts?:number;availableAt?:number}={})=>call('/runs/queue',{method:'POST',body:JSON.stringify({capability,input,...options})}) as Promise<RunRecord>,
     run:(id:string)=>call(`/runs/${encodeURIComponent(id)}`) as Promise<RunRecord>,
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<CapabilityResult>,

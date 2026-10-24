@@ -46,4 +46,19 @@ CREATE TABLE IF NOT EXISTS captra_memories (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS captra_memories_recall ON captra_memories (tenant_id,scope,owner_id,created_at DESC);
+
+CREATE TABLE IF NOT EXISTS captra_jobs (
+  id uuid PRIMARY KEY,
+  run_id uuid NOT NULL UNIQUE REFERENCES captra_runs(id) ON DELETE CASCADE,
+  status text NOT NULL DEFAULT 'queued',
+  attempts integer NOT NULL DEFAULT 0,
+  max_attempts integer NOT NULL DEFAULT 3,
+  available_at timestamptz NOT NULL DEFAULT now(),
+  leased_by text,
+  lease_until timestamptz,
+  error text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_jobs_claim ON captra_jobs (status,available_at) WHERE status IN ('queued','leased');
 `

@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CreateRun,type MemoryAdapter,type MemoryIdentity,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore } from '@captra/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CreateRun,type MemoryAdapter,type MemoryIdentity,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type WorkItem,type WorkQueue } from '@captra/core'
 import { postgresSchema } from './schema'
 
 export { postgresSchema }
@@ -9,10 +9,12 @@ export async function migrateCaptra(client:SqlClient){await client.query(postgre
 type RunRow={id:string;app:string;app_version:string;capability:string;status:RunRecord['status'];tenant_id:string;user_id:string;project_id:string;session_id?:string;input:unknown;validated_input?:unknown;output?:unknown;approval?:RunRecord['approval'];error?:string;idempotency_key?:string;created_at:Date|string;updated_at:Date|string}
 type EventRow={id:string;run_id:string;sequence:number;protocol:string;at:Date|string;type:CaptraEvent['type'];capability:string;detail:string;data?:unknown}
 type MemoryRow={id:string;tenant_id:string;scope:MemoryScope;owner_id:string;type:MemoryRecord['type'];content:string;confidence:number;created_at:Date|string}
+type JobRow={id:string;run_id:string;attempts:number;max_attempts:number;available_at:Date|string;lease_until?:Date|string;leased_by?:string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
 const memoryFrom=(row:MemoryRow):MemoryRecord=>({id:row.id,tenantId:row.tenant_id,scope:row.scope,ownerId:row.owner_id,type:row.type,content:row.content,confidence:row.confidence,createdAt:millis(row.created_at)})
+const jobFrom=(row:JobRow):WorkItem=>({id:row.id,runId:row.run_id,attempts:row.attempts,maxAttempts:row.max_attempts,availableAt:millis(row.available_at),leaseUntil:row.lease_until?millis(row.lease_until):undefined,leasedBy:row.leased_by})
 
 export class PostgresRunStore implements RunStore{
   constructor(readonly client:SqlClient){}
@@ -29,4 +31,14 @@ export class PostgresMemoryStore implements MemoryAdapter{
   async remember(record:Omit<MemoryRecord,'id'|'createdAt'>){if(!record.tenantId)throw new Error('Postgres memory requires tenantId');const id=crypto.randomUUID();const result=await this.client.query<MemoryRow>('INSERT INTO captra_memories (id,tenant_id,scope,owner_id,type,content,confidence) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',[id,record.tenantId,record.scope,record.ownerId,record.type,record.content,record.confidence]);return memoryFrom(result.rows[0])}
   async recall(scopes:readonly MemoryScope[],identity:MemoryIdentity){if(!identity.tenantId||!scopes.length)return [];const owners=scopes.map(scope=>scope==='organization'?identity.tenantId:scope==='user'?identity.userId:scope==='project'?identity.projectId:scope==='session'?identity.sessionId:identity.taskId??identity.runId);const pairs=scopes.map((scope,index)=>`(scope=$${index*2+2} AND owner_id=$${index*2+3})`).join(' OR ');const values:unknown[]=[identity.tenantId];scopes.forEach((scope,index)=>values.push(scope,owners[index]??'__none__'));const result=await this.client.query<MemoryRow>(`SELECT * FROM captra_memories WHERE tenant_id=$1 AND (${pairs}) ORDER BY created_at DESC`,values);return result.rows.map(memoryFrom)}
   async forget(id:string,identity:MemoryIdentity){if(!identity.tenantId)return false;const result=await this.client.query('DELETE FROM captra_memories WHERE id=$1 AND tenant_id=$2',[id,identity.tenantId]);return (result.rowCount??0)>0}
+}
+
+export class PostgresWorkQueue implements WorkQueue{
+  constructor(readonly client:SqlClient){}
+  async enqueue(input:{runId:string;maxAttempts?:number;availableAt?:number}){const result=await this.client.query<JobRow>(`INSERT INTO captra_jobs (id,run_id,max_attempts,available_at) VALUES ($1,$2,$3,to_timestamp($4/1000.0)) ON CONFLICT (run_id) DO UPDATE SET run_id=EXCLUDED.run_id RETURNING *`,[crypto.randomUUID(),input.runId,input.maxAttempts??3,input.availableAt??Date.now()]);return jobFrom(result.rows[0])}
+  async claim(workerId:string,leaseMs:number){const result=await this.client.query<JobRow>(`UPDATE captra_jobs SET status='leased',leased_by=$1,lease_until=now()+($2*interval '1 millisecond'),attempts=attempts+1,updated_at=now() WHERE id=(SELECT id FROM captra_jobs WHERE (status='queued' OR (status='leased' AND lease_until<=now())) AND available_at<=now() AND attempts<max_attempts ORDER BY available_at,created_at FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING *`,[workerId,leaseMs]);return result.rows[0]?jobFrom(result.rows[0]):undefined}
+  async ack(id:string,workerId:string){const result=await this.client.query('DELETE FROM captra_jobs WHERE id=$1 AND leased_by=$2',[id,workerId]);return (result.rowCount??0)>0}
+  async release(id:string,workerId:string,delayMs:number){const result=await this.client.query(`UPDATE captra_jobs SET status='queued',available_at=now()+($3*interval '1 millisecond'),leased_by=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND leased_by=$2`,[id,workerId,delayMs]);return (result.rowCount??0)>0}
+  async fail(id:string,workerId:string,error:string){const result=await this.client.query(`UPDATE captra_jobs SET status='dead',error=$3,leased_by=NULL,lease_until=NULL,updated_at=now() WHERE id=$1 AND leased_by=$2`,[id,workerId,error]);return (result.rowCount??0)>0}
+  async heartbeat(id:string,workerId:string,leaseMs:number){const result=await this.client.query(`UPDATE captra_jobs SET lease_until=now()+($3*interval '1 millisecond'),updated_at=now() WHERE id=$1 AND leased_by=$2 AND status='leased'`,[id,workerId,leaseMs]);return (result.rowCount??0)>0}
 }
