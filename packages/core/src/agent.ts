@@ -5,13 +5,13 @@ import type { ModelAdapter,ModelMessage,ModelResponse,ModelToolCall } from './mo
 import type { Tool } from './tools.js'
 
 export type AgentBudget={maxSteps?:number;maxToolCalls?:number;maxTokens?:number}
-export type AgentDefinition<Input,Output>={
-  name:string;description:string;instructions:string;input:ZodType<Input>;output:ZodType<Output>;model:ModelAdapter
+export type AgentDefinition<Input,Output,Name extends string=string>={
+  name:Name;description:string;instructions:string;input:ZodType<Input>;output:ZodType<Output>;model:ModelAdapter
   tools?:readonly Tool<any,any>[];memory?:readonly MemoryScope[];permissions?:readonly string[];approval?:'never'|'required'
   idempotent?:boolean;policy?:ExecutionPolicy;budget?:AgentBudget;temperature?:number;view:ViewReference<Output>|unknown
 }
 
-export function agent<Input,Output>(definition:AgentDefinition<Input,Output>):Capability<Input,Output>{
+export function agent<const Name extends string,Input,Output>(definition:AgentDefinition<Input,Output,Name>):Capability<Input,Output,Name>{
   const allowed=new Set((definition.tools??[]).map(tool=>tool.name)),tools=(definition.tools??[]).map(tool=>({name:tool.name,description:tool.description,inputSchema:toJSONSchema(tool.input)}))
   return capability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,memory:definition.memory,permissions:definition.permissions,approval:definition.approval,idempotent:definition.idempotent,policy:definition.policy,tools:definition.tools,mode:'agent',view:definition.view,
     run:async(input,context)=>runAgent(definition,input,context,allowed,tools)})

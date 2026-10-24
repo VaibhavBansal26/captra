@@ -61,6 +61,16 @@ export const researcher=agent({
 
 This preserves one mental model for developers: deterministic capabilities and model-directed agents use the same schemas, memory, tools, approvals, events, workers, and UI boundary.
 
+The same app contract provides end-to-end types to browser and server clients without generating a second schema:
+
+```ts
+const client=createCaptraClient<typeof app>({baseUrl:'/api/captra'})
+const result=await client.execute('refund',{amount:48})
+// capability names, input, and result.value are inferred from app
+```
+
+Remote responses contain a small transport-safe capability descriptor rather than runtime functions or validation objects. React resolves the returned view name against an explicit local component registry: `<CapabilityOutput result={result} views={{RefundCard}} />`.
+
 Use the OpenAI Responses API through the provider-neutral model contract:
 
 ```ts
