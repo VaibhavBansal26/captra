@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.6.1
+
+### Patch Changes
+
+- Generate new applications against Captra 0.10 with provider fallback and aggregate usage accounting.
+
 ## 0.6.0
 
 ### Minor Changes

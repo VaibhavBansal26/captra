@@ -29,3 +29,5 @@ Structured generation uses provider-native JSON Schema when supported, then norm
 [Core documentation](https://vaibhavbansal26.github.io/captra/reference/capabilities) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/core) · MIT
 
 Network tools are opt-in. Use `createFetchJsonTool({allowedOrigins:[...]})`; `builtinTools` contains only scoped memory operations.
+
+Use `createModelFallback()` to compose named model adapters with bounded retries, timeouts, total deadlines, circuit breaking, sticky continuation state, and usage-aware fallback history.

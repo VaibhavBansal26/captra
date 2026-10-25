@@ -277,6 +277,7 @@ Plugin order is deterministic: plugin hooks wrap app hooks, and app-local tools 
 - `ModelAdapter` — provider-neutral generation and streaming
 - `createStructuredGenerator()` — schema-validated model output
 - `createModelPlanner()` — natural-language capability selection
+- `createModelFallback()` — retries, deadlines, circuit breaking, sticky provider failover, and aggregate usage
 - `agent()` — budgeted multi-step model/tool execution as a typed capability
 - `builtinTools` — scoped remember, recall, and forget operations
 - `createFetchJsonTool()` — opt-in JSON HTTP access with exact outbound-origin, header, redirect, and response-size policy

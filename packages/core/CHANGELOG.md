@@ -1,5 +1,13 @@
 # @captra-ai/core
 
+## 0.8.0
+
+### Minor Changes
+
+- Add production-oriented model provider fallback with named providers, bounded retries, per-provider timeout cancellation, total deadlines, circuit breaking, sticky continuation state, portable provider errors, attempt traces, and aggregate token/cost usage across billed attempts.
+
+  The OpenAI adapter now classifies HTTP failures with status, retryability, stable codes, and reported usage for deterministic fallback policy.
+
 ## 0.7.0
 
 ### Minor Changes

@@ -2,6 +2,8 @@
 
 OpenAI Responses API and embeddings adapters for Captra's provider-neutral model and memory contracts.
 
+HTTP failures are exposed as portable `ModelProviderError` values with status, retryability, stable codes, and reported usage so `createModelFallback()` can make deterministic decisions.
+
 ```bash
 npm install @captra-ai/openai @captra-ai/core
 ```

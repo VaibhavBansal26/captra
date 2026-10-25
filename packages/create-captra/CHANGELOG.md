@@ -1,5 +1,13 @@
 # create-captra
 
+## 0.5.7
+
+### Patch Changes
+
+- Generate new applications against Captra 0.10 with provider fallback and aggregate usage accounting.
+- Updated dependencies
+  - @captra-ai/cli@0.6.1
+
 ## 0.5.6
 
 ### Patch Changes

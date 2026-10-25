@@ -38,3 +38,5 @@ const runtime=createRuntime(app,{budgets:distributedBudgets})
 The adapter must atomically validate and reserve every applicable scope. A database implementation should lock or compare-and-swap the user and tenant windows in one transaction so two workers cannot both consume the final allowance.
 
 Provider usage remains the accounting source of truth. Supply provider-specific `estimateTokens` and `estimateCostUsd` functions when exact tokenizer and pricing behavior matters.
+
+When `createModelFallback()` is used, usage from the successful response and any billed failed attempts is aggregated before the reservation is committed. Attempt-level usage remains available in model traces for provider-level reporting.
