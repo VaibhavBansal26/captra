@@ -341,7 +341,7 @@ captra test my-app
 captra inspect my-app
 ```
 
-The generators create typed, buildable framework contracts and tell you exactly what to register in `src/captra.app.ts`. `captra doctor` checks the Node runtime, framework dependency, application structure, TypeScript configuration, and common browser-exposed AI secret mistakes without printing secret values.
+The generators create typed, buildable framework contracts and tell you exactly what to register in `src/captra.app.ts`. `captra doctor` checks the project setup. `captra secrets` follows browser imports and fails on server-only modules, server environment access, public secret variables, or credential-like literals without printing secret values. Generated builds run it before and after bundling.
 
 The runtime is model- and backend-independent. Implement `PlannerAdapter`, `MemoryAdapter`, and `RunStore` to connect an existing agent runtime and infrastructure.
 

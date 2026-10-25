@@ -1,5 +1,13 @@
 # @captra-ai/cli
 
+## 0.6.0
+
+### Minor Changes
+
+- Add `captra secrets`, a build-time security gate that follows browser runtime imports, rejects server-only modules and environment access, detects credential-like literals without printing their values, checks public environment variables, and can scan compiled output with `--dist`.
+
+  Generated applications now run the gate before and after their browser build and keep UI components separate from server-side capability and provider configuration.
+
 ## 0.5.5
 
 ### Patch Changes

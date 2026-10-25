@@ -33,6 +33,10 @@ createCaptraHandler(runtime,{
 
 Run records, replay responses, events, and SSE streams also redact failure details at the transport boundary.
 
+## Client-secret gate
+
+Run `captra secrets` before a browser build and `captra secrets --dist` afterward. The generated starter does both automatically. The checker follows browser runtime imports, blocks server-only Captra entry points and server environment access, detects common credential shapes without echoing values, and checks public-prefixed variables in `.env` files.
+
 ## Resource limits
 
 Every production agent should define step, tool-call, token, timeout, and retry budgets. The server supports request-size bounds and authenticated fixed-window rate limiting:

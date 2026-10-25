@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently -k \"vite\" \"tsx watch src/server.ts\"",
-    "build": "tsc -p tsconfig.app.json --noEmit && vite build && tsc -p tsconfig.server.json",
+    "build": "captra secrets && tsc -p tsconfig.app.json --noEmit && vite build && captra secrets --dist && tsc -p tsconfig.server.json",
     "start": "node dist-server/server.js",
     "test": "vitest run"
   },
@@ -15,6 +15,7 @@
     "zod": "^4.0.0"
   },
   "devDependencies": {
+    "@captra-ai/cli": "^0.6.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

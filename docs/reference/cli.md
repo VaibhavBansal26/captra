@@ -29,3 +29,33 @@ Checks Node, the Captra dependency, expected project structure, TypeScript confi
 ## `inspect`
 
 Validates and summarizes a Captra project and its installed framework packages. Use it in CI to catch incomplete registrations and incompatible setup.
+
+## `secrets`
+
+```bash
+captra secrets
+captra secrets --dist
+```
+
+Follows browser runtime imports from `src/main.*` and `src/client.*` while ignoring type-only imports. It fails when browser-reachable code imports Captra's server, OpenAI, or PostgreSQL entry points, reads server environment variables, contains a recognizable credential literal, or declares a secret-looking public environment variable. Findings identify the file, line, and category but never print a credential value.
+
+`--dist` scans compiled JavaScript, HTML, and CSS. The generated starter runs both checks as part of `npm run build`.
+
+Projects with nonstandard entry points can configure the check in `package.json`:
+
+```json
+{
+  "captra": {
+    "security": {
+      "secretCheck": {
+        "browserEntries": ["web/main.tsx"],
+        "outputDirectory": "build",
+        "allowEnv": ["PUBLIC_ANALYTICS_TOKEN"],
+        "ignoreFiles": ["dist/vendor/**"]
+      }
+    }
+  }
+}
+```
+
+Allowlist only values that are intentionally public. An allowlist suppresses a finding; it does not make a secret safe.
