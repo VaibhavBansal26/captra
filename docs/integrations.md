@@ -51,6 +51,12 @@ Adapters should throw `ModelProviderError` with HTTP status, retryability, a sta
 
 Plugin names must be unique. Tool conflicts fail during application construction, preventing load-order-dependent behavior. A plugin should declare its own version and document the compatible Captra range until a formal compatibility manifest is introduced.
 
+## Model Context Protocol
+
+`captra/mcp` supports MCP in both directions. It can discover remote MCP tools and import them through Captra's permissions, hooks, effect receipts, and idempotency rules. It can also expose every Captra capability as an MCP tool while publishing the richer capability contract—memory, state, locks, approval, budget, policy, and UI metadata—as tool metadata and the `captra://manifest` resource.
+
+See the [MCP reference](/reference/mcp) for authenticated HTTP setup and lifecycle handling.
+
 ## Planned official integrations
 
-The next integration milestone prioritizes authentication, PostgreSQL platforms, observability, additional model providers, and common SaaS tools. See the [roadmap](/roadmap).
+The next integration milestone prioritizes additional model providers, authentication adapters, PostgreSQL platforms, observability exporters, and common SaaS tools. See the [roadmap](/roadmap).

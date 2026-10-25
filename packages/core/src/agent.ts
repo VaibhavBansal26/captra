@@ -14,7 +14,7 @@ export type AgentDefinition<Input,Output,Name extends string=string>={
 
 export function agent<const Name extends string,Input,Output>(definition:AgentDefinition<Input,Output,Name>):Capability<Input,Output,Name>{
   const allowed=new Set((definition.tools??[]).map(tool=>tool.name)),tools=(definition.tools??[]).map(tool=>({name:tool.name,description:tool.description,inputSchema:toJSONSchema(tool.input),strict:true}))
-  return capability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,memory:definition.memory,permissions:definition.permissions,approval:definition.approval,idempotent:definition.idempotent,policy:definition.policy,tools:definition.tools,mode:'agent',view:definition.view,
+  return capability({name:definition.name,description:definition.description,input:definition.input,output:definition.output,memory:definition.memory,permissions:definition.permissions,approval:definition.approval,idempotent:definition.idempotent,policy:definition.policy,budget:definition.budget,tools:definition.tools,mode:'agent',view:definition.view,
     run:async(input,context)=>runAgent(definition,input,context,allowed,tools)})
 }
 

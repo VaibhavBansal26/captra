@@ -27,6 +27,7 @@ import { createCaptraClient } from 'captra/client'
 import { CapabilityOutput } from 'captra/react'
 import { createCaptraHandler } from 'captra/server'
 import { createNodeHandler } from 'captra/server/node'
+import { createCaptraMcpHandler } from 'captra/mcp'
 ```
 
 ```tsx

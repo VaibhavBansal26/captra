@@ -1,0 +1,12 @@
+# @captra-ai/mcp
+
+## 0.1.0
+
+### Minor Changes
+
+- Add bidirectional MCP support: governed remote-tool imports, Streamable HTTP clients, capability-contract servers, authenticated identity mapping, durable approval/status/cancellation lifecycle tools, and MCP manifest resources. Capability budgets are now retained in compiled application contracts.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.13.0

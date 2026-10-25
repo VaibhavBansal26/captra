@@ -13,6 +13,7 @@ Most applications should install `captra` and import from its explicit entry poi
 | `@captra-ai/server` | Web Standard handler plus Next.js, Hono, Node, and Express adapters |
 | `@captra-ai/postgres` | Runs, memory, vectors, checkpoints, queues, and shared state |
 | `@captra-ai/openai` | Responses API and embedding adapters |
+| `@captra-ai/mcp` | MCP client discovery, governed tool imports, capability server, and lifecycle tools |
 | `@captra-ai/cli` | Creation, generation, development, validation, and inspection commands |
 | `create-captra` | `npm create captra` bootstrap package |
 
@@ -27,6 +28,7 @@ import { createCaptraHandler } from 'captra/server'
 import { createNodeHandler } from 'captra/server/node'
 import { PostgresRunStore } from 'captra/postgres'
 import { createOpenAI } from 'captra/openai'
+import { createCaptraMcpHandler } from 'captra/mcp'
 ```
 
 Explicit subpaths keep Node and database modules out of browser bundles.
