@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/cli",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "Create, inspect, develop, test, and build Captra applications.",
   "license": "MIT",
   "repository": {
@@ -20,7 +20,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@captra-ai/core": "^0.15.0",
+    "@captra-ai/core": "^0.16.0",
     "tsx": "^4.23.15"
   },
   "scripts": {

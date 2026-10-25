@@ -1,5 +1,20 @@
 # captra
 
+## 0.18.0
+
+### Minor Changes
+
+- 0f0475d: Add tenant-safe durable conversation storage, server-side chat history, authenticated cursor pagination, and React history loading.
+
+### Patch Changes
+
+- Updated dependencies [0f0475d]
+  - @captra-ai/core@0.16.0
+  - @captra-ai/client@0.7.0
+  - @captra-ai/server@0.10.0
+  - @captra-ai/react@0.7.0
+  - @captra-ai/mcp@0.1.3
+
 ## 0.17.0
 
 ### Minor Changes

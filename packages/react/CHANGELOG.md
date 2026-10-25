@@ -1,5 +1,11 @@
 # @captra-ai/react
 
+## 0.7.0
+
+### Minor Changes
+
+- 0f0475d: Add tenant-safe durable conversation storage, server-side chat history, authenticated cursor pagination, and React history loading.
+
 ## 0.6.0
 
 ### Minor Changes
