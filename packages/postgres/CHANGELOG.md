@@ -1,5 +1,11 @@
 # @captra-ai/postgres
 
+## 0.8.0
+
+### Minor Changes
+
+- fb793b6: Add a tenant-safe PostgreSQL conversation store with deduplicated appends and cursor-paginated history.
+
 ## 0.7.0
 
 ### Minor Changes

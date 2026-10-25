@@ -1,5 +1,12 @@
 # captra
 
+## 0.18.1
+
+### Patch Changes
+
+- Updated dependencies [fb793b6]
+  - @captra-ai/postgres@0.8.0
+
 ## 0.18.0
 
 ### Minor Changes
