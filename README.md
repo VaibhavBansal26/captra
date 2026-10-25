@@ -225,10 +225,12 @@ const telemetry=new InMemoryTelemetry()
 const runtime=createRuntime(app,{telemetry})
 
 const report=await runEvaluation(runtime,cases)
-enforceEvaluation(report,{minPassRate:.95,maxFailures:2})
+enforceEvaluation(report,{minPassRate:.95,maxFailures:2,maxCostUsd:1,maxP95DurationMs:2_500})
+
+console.log(formatEvaluation(report,'junit'))
 ```
 
-`recordModel()` captures provider-neutral model interactions. `replayModel()` returns those responses deterministically during tests, eliminating API cost and model variance from regression suites.
+Evaluation suites support reusable scorers, per-case cost/token/latency limits, aggregate quality gates, and baseline-versus-candidate comparison. `recordModel()` captures provider-neutral model interactions. `replayModel()` returns those responses deterministically during tests, eliminating API cost and model variance from regression suites.
 Use `createOpenTelemetryAdapter(tracer,meter)` to export the same signals through an existing OpenTelemetry SDK and exporter.
 
 ## Lifecycle hooks

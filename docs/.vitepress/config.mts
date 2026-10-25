@@ -21,7 +21,7 @@ export default defineConfig({
       {text:'Reference',link:'/reference/capabilities'},
       {text:'Integrations',link:'/integrations'},
       {text:'Roadmap',link:'/roadmap'},
-      {text:'0.6.0',items:[
+      {text:'0.12.0',items:[
         {text:'Changelog',link:'https://github.com/VaibhavBansal26/captra/releases'},
         {text:'npm',link:'https://www.npmjs.com/package/captra'},
       ]},
@@ -40,6 +40,7 @@ export default defineConfig({
           {text:'Runtime & durability',link:'/reference/runtime'},
           {text:'Token & cost budgets',link:'/reference/budgets'},
           {text:'Devtools',link:'/reference/devtools'},
+          {text:'Replay & evaluations',link:'/reference/evaluations'},
           {text:'React & generated UI',link:'/reference/react'},
         ]},
         {text:'Build and ship',items:[

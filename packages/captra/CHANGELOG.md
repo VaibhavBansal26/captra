@@ -1,5 +1,16 @@
 # captra
 
+## 0.12.0
+
+### Minor Changes
+
+- Add named evaluation suites, quality scorers, cost/token/latency gates, variant comparison, and Markdown, JSON, and JUnit reports.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.10.0
+
 ## 0.11.0
 
 ### Minor Changes
