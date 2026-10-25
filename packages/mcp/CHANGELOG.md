@@ -1,5 +1,12 @@
 # @captra-ai/mcp
 
+## 0.1.1
+
+### Patch Changes
+
+- Updated dependencies [59451c5]
+  - @captra-ai/core@0.14.0
+
 ## 0.1.0
 
 ### Minor Changes
