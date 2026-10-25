@@ -39,6 +39,8 @@ export function createCaptraHandler(runtime:Runtime,options:CaptraHandlerOptions
       if(request.method==='POST'&&route==='/runs/queue'){if(!options.queue)throw new CaptraHttpError(501,'queue_unavailable','Background queue is not configured');const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string;maxAttempts?:number;availableAt?:number}>(request,maxBodyBytes);const {maxAttempts,availableAt,...run}=body;return decorate(json(await runtime.enqueue({...run,identity},options.queue,{maxAttempts,availableAt}),202),requestId,origin,options.cors)}
       if(request.method==='POST'&&route==='/runs/stream'){const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string}>(request,maxBodyBytes);return decorate(streamRun(runtime,{...body,identity},requestId,request,options.onError),requestId,origin,options.cors)}
       if(request.method==='POST'&&route==='/runs'){const body=await readJson<{capability:string;input:unknown;idempotencyKey?:string}>(request,maxBodyBytes);return decorate(json(toRemoteResult(await runtime.execute({...body,identity})),202),requestId,origin,options.cors)}
+      const approvalStream=route.match(/^\/runs\/([^/]+)\/approve\/stream$/)
+      if(request.method==='POST'&&approvalStream){await assertTenant(runtime,approvalStream[1],identity);return decorate(streamOperation(event=>runtime.approve(approvalStream[1],'approved',identity,event),requestId,request,options.onError),requestId,origin,options.cors)}
       const approval=route.match(/^\/runs\/([^/]+)\/(approve|reject)$/)
       if(request.method==='POST'&&approval){await assertTenant(runtime,approval[1],identity);return decorate(json(toRemoteResult(await runtime.approve(approval[1],approval[2]==='approve'?'approved':'rejected',identity))),requestId,origin,options.cors)}
       const cancellation=route.match(/^\/runs\/([^/]+)\/cancel$/)
@@ -69,10 +71,13 @@ function toRemoteResult(result:CapabilityResult):RemoteCapabilityResult{return {
 function toPublicRun(run:RunRecord):RunRecord{return run.error?{...run,error:'Execution failed'}:run}
 function toPublicEvent(event:CaptraEvent):CaptraEvent{return event.type==='run.failed'||event.type==='tool.failed'?{...event,detail:event.type==='run.failed'?'Execution failed':'Tool call failed',data:undefined}:event}
 function streamRun(runtime:Runtime,request:Parameters<Runtime['execute']>[0],requestId:string,httpRequest:Request,onError?:CaptraHandlerOptions['onError']){
+  return streamOperation(onEvent=>runtime.execute({...request,onEvent}),requestId,httpRequest,onError)
+}
+function streamOperation(operation:(onEvent:(event:CaptraEvent)=>void)=>Promise<CapabilityResult>,requestId:string,httpRequest:Request,onError?:CaptraHandlerOptions['onError']){
   const encoder=new TextEncoder()
   const body=new ReadableStream({start(controller){
     const send=(event:string,data:unknown)=>controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`))
-    runtime.execute({...request,onEvent:event=>send('trace',toPublicEvent(event))}).then(result=>{send('result',toRemoteResult(result));controller.close()},async error=>{const failure=classifyError(error);await reportError(onError,{requestId,request:httpRequest,error,status:failure.status,code:failure.code});send('error',{message:failure.message,code:failure.code,requestId});controller.close()})
+    operation(event=>send('trace',toPublicEvent(event))).then(result=>{send('result',toRemoteResult(result));controller.close()},async error=>{const failure=classifyError(error);await reportError(onError,{requestId,request:httpRequest,error,status:failure.status,code:failure.code});send('error',{message:failure.message,code:failure.code,requestId});controller.close()})
   }})
   return new Response(body,{headers:{'content-type':'text/event-stream','cache-control':'no-cache'}})
 }

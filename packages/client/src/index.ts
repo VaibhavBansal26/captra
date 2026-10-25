@@ -16,19 +16,18 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
     replay:(id:string)=>call(`/runs/${encodeURIComponent(id)}/replay`) as Promise<{run:RunRecord;events:CaptraEvent[];checkpoints:Array<{id:string;runId:string;key:string;sequence:number;state:unknown;createdAt:number}>}>,
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
+    async *approveStream(id:string,signal?:AbortSignal):AsyncIterable<StreamMessage>{const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/${encodeURIComponent(id)}/approve/stream`,{method:'POST',headers:{accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},signal});yield* readStream(response)},
     reject:(id:string)=>call(`/runs/${encodeURIComponent(id)}/reject`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
     cancel:(id:string)=>call(`/runs/${encodeURIComponent(id)}/cancel`,{method:'POST'}) as Promise<RunRecord>,
     usage:(groupBy:UsageGroupBy='capability',query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage?${usageParams({...query,groupBy})}`) as Promise<{groupBy:UsageGroupBy;items:UsageSummary[]}>,
     usageRecords:(query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage/records?${usageParams(query)}`) as Promise<UsageRecord[]>,
     async *stream<Name extends CapabilityName<App>>(capability:Name,input:CapabilityInput<App,Name>,idempotencyKey?:string,signal?:AbortSignal):AsyncIterable<StreamMessage<CapabilityOutput<App,Name>>>{
       const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/stream`,{method:'POST',headers:{'content-type':'application/json',accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},body:JSON.stringify({capability,input,idempotencyKey}),signal})
-      assertProtocol(response)
-      if(!response.ok||!response.body)throw new CaptraClientError(`Captra stream failed: ${response.status}`,response.status,undefined,response.headers.get('x-request-id')??undefined)
-      const reader=response.body.pipeThrough(new TextDecoderStream()).getReader();let buffer=''
-      for(;;){const {done,value}=await reader.read();buffer+=value??'';const frames=buffer.split('\n\n');buffer=frames.pop()??'';for(const frame of frames){const event=frame.match(/^event: (.+)$/m)?.[1] as StreamMessage['event']|undefined;const data=frame.match(/^data: (.+)$/m)?.[1];if(event&&data)yield {event,data:JSON.parse(data)} as StreamMessage<CapabilityOutput<App,Name>>}if(done)break}
+      yield* readStream<CapabilityOutput<App,Name>>(response)
     }
   }
 }
 export type CaptraClient<App extends AgentApp=AgentApp>=ReturnType<typeof createCaptraClient<App>>
 function assertProtocol(response:Response){const protocol=response.headers.get('captra-protocol');if(protocol&&protocol!==CAPTRA_PROTOCOL_VERSION)throw new CaptraClientError(`Unsupported Captra protocol: ${protocol}`,426,'protocol_mismatch',response.headers.get('x-request-id')??undefined)}
+async function* readStream<Output=unknown>(response:Response):AsyncIterable<StreamMessage<Output>>{assertProtocol(response);if(!response.ok||!response.body)throw new CaptraClientError(`Captra stream failed: ${response.status}`,response.status,undefined,response.headers.get('x-request-id')??undefined);const reader=response.body.pipeThrough(new TextDecoderStream()).getReader();let buffer='';for(;;){const {done,value}=await reader.read();buffer+=value??'';const frames=buffer.split('\n\n');buffer=frames.pop()??'';for(const frame of frames){const event=frame.match(/^event: (.+)$/m)?.[1] as StreamMessage['event']|undefined;const data=frame.match(/^data: (.+)$/m)?.[1];if(event&&data)yield {event,data:JSON.parse(data)} as StreamMessage<Output>}if(done)break}}
 function usageParams(query:Record<string,unknown>){const params=new URLSearchParams();for(const [key,value] of Object.entries(query))if(value!==undefined)params.set(key,String(value));return params}

@@ -17,6 +17,6 @@ return <CapabilityOutput result={greet.result} views={{ Greeting }} />
 
 Components expose stable `data-captra` attributes and remain fully styleable by the application.
 
-For conversational interfaces, `useChat(client, 'support.chat')` provides messages, token deltas, stop, reconnect, approvals, durable run status, usage, and budget state without introducing a second chat protocol.
+For conversational interfaces, `useChat(client, 'support.chat')` provides messages, token deltas, stop, reconnect, streaming approvals, durable run status, usage, and budget state without introducing a second chat protocol. Render the accessible, unstyled default with `<CaptraChat chat={chat} />`, then customize it through render props and stable `data-captra` attributes.
 
 [React documentation](https://vaibhavbansal26.github.io/captra/reference/react) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/react) · MIT

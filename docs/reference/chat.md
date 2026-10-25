@@ -30,11 +30,7 @@ import { useChat } from 'captra/react'
 export function SupportChat() {
   const chat = useChat(client, 'support.chat')
 
-  return <>
-    {chat.messages.map(message => <p key={message.id}>{message.content}</p>)}
-    <button onClick={() => chat.send('Where is my order?')}>Send</button>
-    <button onClick={chat.stop} disabled={!chat.pending}>Stop</button>
-  </>
+  return <CaptraChat chat={chat} />
 }
 ```
 
@@ -47,3 +43,9 @@ Use `reconnect(runId)` after a reload or transport interruption. The hook reload
 Chat history is capability input and must be treated as untrusted. Authentication stays in the server adapter. Provider keys must never be passed to `useChat` or included in the browser bundle.
 
 Approval-required chat capabilities pause like every other Captra capability. The requester cannot self-approve by default; `approve()` must be called through a client authenticated as the independent approver.
+
+Approval continuation uses a streaming endpoint, so model tokens and run events continue appearing after the independent approver accepts the run. `<CaptraChat>` renders the approval panel automatically.
+
+## Customize the component
+
+`<CaptraChat>` is accessible and unstyled. Use its stable `data-captra` and `data-role` attributes from CSS, or provide `renderMessage`, `empty`, `footer`, labels, and a class name. The component owns only presentation and composer state; the hook remains the source of truth for execution state.
