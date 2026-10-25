@@ -8,7 +8,7 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Design tenant-, user-, and conversation-scoped tables and migrations.
   - [x] Add ordered message indexes and opaque cursor pagination.
   - [ ] Implement append, list, archive, delete, and retention operations.
-  - [ ] Test tenant isolation, ownership checks, deduplication, and concurrent appends against real PostgreSQL.
+  - [x] Test tenant isolation, ownership checks, deduplication, and concurrent appends against real PostgreSQL.
   - [ ] Document migration, backup, retention, and adapter configuration.
 - [ ] Make chat persistence atomic with run completion.
   - [ ] Define the transaction boundary between messages, events, usage, and terminal run state.
