@@ -24,10 +24,12 @@ Background workers claim expiring queue leases. Checkpoints allow a replacement 
 
 - Resolve a trusted identity for every request
 - Enforce tool and capability permissions server-side
+- Allowlist exact outbound origins for every HTTP tool
 - Configure explicit CORS origins
 - Apply request-size and execution budgets
 - Use durable run, checkpoint, and queue stores
 - Run PostgreSQL migrations before traffic shifts
 - Export telemetry and alert on failures and lease conflicts
+- Log original server failures through `onError` with their request IDs
 - Test cancellation and worker recovery
 - Never expose provider or database secrets to client bundles

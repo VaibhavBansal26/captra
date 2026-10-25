@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/core",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Typed capability contracts and durable runtime for Captra.",
   "license": "MIT",
   "repository": {

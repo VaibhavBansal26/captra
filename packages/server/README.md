@@ -11,8 +11,11 @@ import { createCaptraHandler } from '@captra-ai/server'
 
 const handler = createCaptraHandler(runtime, {
   auth: async request => authenticate(request),
+  onError: ({ requestId, error }) => logger.error({ requestId, error }),
 })
 ```
+
+Public responses and SSE events use sanitized messages and correlation IDs. Original exceptions are sent only to the optional server-side `onError` observer.
 
 Adapters are available from `@captra-ai/server/node` and `@captra-ai/server/express`. Keep provider keys and database credentials on the server.
 

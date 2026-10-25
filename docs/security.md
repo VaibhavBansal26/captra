@@ -14,10 +14,24 @@ Resolve `tenantId`, `userId`, and `projectId` from a verified server session. Ne
 - Require approval for irreversible or high-impact work.
 - Validate tool output even when the provider API is trusted.
 - Keep credentials in server-side closures.
+- Create HTTP tools with `createFetchJsonTool()` and exact `allowedOrigins`; network tools are not included in `builtinTools`.
 
 ## Prompt injection
 
-Treat retrieved documents, webpages, tool output, and memory as data—not instructions with authority. Hooks can redact or reject tool input, but product-specific policy belongs in deterministic code.
+Treat retrieved documents, webpages, tool output, and memory as data—not instructions with authority. Agent memory is sent as a delimited, untrusted user-context message rather than concatenated into the trusted system instruction. Hooks can redact or reject tool input, but product-specific policy belongs in deterministic code.
+
+## Public errors
+
+The server returns stable error codes, generic public messages, and an `x-request-id`. Original exceptions are available only through `onError` for trusted logging:
+
+```ts
+createCaptraHandler(runtime,{
+  auth:resolveIdentity,
+  onError:({requestId,error})=>logger.error({requestId,error}),
+})
+```
+
+Run records, replay responses, events, and SSE streams also redact failure details at the transport boundary.
 
 ## Resource limits
 

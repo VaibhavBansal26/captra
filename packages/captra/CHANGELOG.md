@@ -1,5 +1,21 @@
 # captra
 
+## 0.9.0
+
+### Minor Changes
+
+- Add secure runtime boundaries for agent context, outbound HTTP tools, and public server errors.
+
+  Recalled memory is now carried as explicitly delimited untrusted context instead of being concatenated into trusted system instructions. JSON HTTP access is opt-in through `createFetchJsonTool`, which requires exact allowed origins and enforces header, redirect, and response-size policy. The legacy unconfigured HTTP export now fails closed and network access is no longer included in `builtinTools`.
+
+  Server responses, run records, replay data, trace events, and SSE failures now expose stable sanitized errors and request IDs. Trusted applications can observe original exceptions through the new `onError` callback.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.7.0
+  - @captra-ai/server@0.7.0
+
 ## 0.8.0
 
 ### Minor Changes

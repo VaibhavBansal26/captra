@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.5.5
+
+### Patch Changes
+
+- Generate new applications against the secure-by-default Captra 0.9 runtime.
+
 ## 0.5.4
 
 ### Patch Changes

@@ -278,7 +278,8 @@ Plugin order is deterministic: plugin hooks wrap app hooks, and app-local tools 
 - `createStructuredGenerator()` — schema-validated model output
 - `createModelPlanner()` — natural-language capability selection
 - `agent()` — budgeted multi-step model/tool execution as a typed capability
-- `builtinTools` — remember, recall, forget, and JSON HTTP operations
+- `builtinTools` — scoped remember, recall, and forget operations
+- `createFetchJsonTool()` — opt-in JSON HTTP access with exact outbound-origin, header, redirect, and response-size policy
 - `useCaptra()` / `useCapability()` — React orchestration hooks
 
 ## Durable PostgreSQL runtime

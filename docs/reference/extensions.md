@@ -15,7 +15,17 @@ const findCustomer=defineTool({
 
 Tools validate both sides of an integration. The runtime records calls and applies authorization before execution.
 
-Captra includes memory tools and a JSON HTTP tool in `builtinTools`. Register only the tools the application intends to expose.
+`builtinTools` contains only the scoped memory tools. Network access is opt-in and requires an explicit outbound policy:
+
+```ts
+const fetchBilling=createFetchJsonTool({
+  allowedOrigins:['https://billing.example.com'],
+  allowHeaders:['authorization'],
+  maxResponseBytes:500_000,
+})
+```
+
+The HTTP tool rejects non-allowlisted origins, URL credentials, unapproved headers, redirects, and oversized responses. Use a narrowly scoped instance for each external service.
 
 ## Lifecycle hooks
 
