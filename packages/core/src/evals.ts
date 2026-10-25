@@ -4,20 +4,25 @@ export type EvaluationScore={name:string;value:number;passed:boolean;detail?:str
 export type EvaluationScorer={name:string;score:(result:CapabilityResult,test:EvaluationCase)=>number|EvaluationScore|Promise<number|EvaluationScore>;threshold?:number}
 export type EvaluationCase={name:string;capability:string;input:unknown;identity:ExecutionIdentity;assert?:(result:CapabilityResult)=>boolean|Promise<boolean>;scorers?:readonly EvaluationScorer[];tags?:readonly string[];limits?:{maxDurationMs?:number;maxTokens?:number;maxCostUsd?:number}}
 export type EvaluationSuite={version:1;name:string;cases:readonly EvaluationCase[];metadata?:Readonly<Record<string,string>>}
-export type EvaluationResult={name:string;passed:boolean;durationMs:number;runId?:string;error?:string;tags:readonly string[];tokens:number;costUsd:number;scores:readonly EvaluationScore[]}
+export type EvaluationResult={name:string;passed:boolean;durationMs:number;runId?:string;error?:string;tags:readonly string[];tokens:number;costUsd:number;scores:readonly EvaluationScore[];repetition?:number}
 export type EvaluationReport={suite?:string;variant?:string;results:EvaluationResult[];passed:number;failed:number;passRate:number;durationMs:number;tokens:number;costUsd:number;p95DurationMs:number;scoreAverages:Record<string,number>}
 export type EvaluationThresholds={minPassRate?:number;maxFailures?:number;maxDurationMs?:number;maxP95DurationMs?:number;maxTokens?:number;maxCostUsd?:number;minScores?:Readonly<Record<string,number>>}
 export type EvaluationVariant={name:string;runtime:Runtime}
 export type EvaluationComparison={baseline:string;reports:EvaluationReport[];deltas:Array<{variant:string;passRate:number;durationMs:number;tokens:number;costUsd:number;scores:Record<string,number>}>}
+export type StoredEvaluationReport={id:string;tenantId:string;projectId?:string;report:EvaluationReport;createdAt:number}
+export type EvaluationHistoryQuery={tenantId:string;projectId?:string;suite?:string;variant?:string;limit?:number}
+export interface EvaluationStore{save(input:Omit<StoredEvaluationReport,'id'|'createdAt'>):Promise<StoredEvaluationReport>;list(query:EvaluationHistoryQuery):Promise<StoredEvaluationReport[]>}
+export class InMemoryEvaluationStore implements EvaluationStore{readonly reports:StoredEvaluationReport[]=[];async save(input:Omit<StoredEvaluationReport,'id'|'createdAt'>){const saved={...input,id:crypto.randomUUID(),createdAt:Date.now()};this.reports.push(structuredClone(saved));return structuredClone(saved)}async list(query:EvaluationHistoryQuery){return this.reports.filter(item=>item.tenantId===query.tenantId&&(!query.projectId||item.projectId===query.projectId)&&(!query.suite||item.report.suite===query.suite)&&(!query.variant||item.report.variant===query.variant)).sort((a,b)=>b.createdAt-a.createdAt).slice(0,query.limit??100).map(item=>structuredClone(item))}}
 
 export class EvaluationRegressionError extends Error{
   readonly code='evaluation_regression'
   constructor(readonly failures:readonly string[],readonly report:EvaluationReport){super(`Evaluation regression: ${failures.join('; ')}`);this.name='EvaluationRegressionError'}
 }
 
-export async function runEvaluation(runtime:Runtime,casesOrSuite:readonly EvaluationCase[]|EvaluationSuite,options:{variant?:string}={}):Promise<EvaluationReport>{
+export async function runEvaluation(runtime:Runtime,casesOrSuite:readonly EvaluationCase[]|EvaluationSuite,options:{variant?:string;repetitions?:number;store?:EvaluationStore;scope?:{tenantId:string;projectId?:string}}={}):Promise<EvaluationReport>{
   const suite=Array.isArray(casesOrSuite)?undefined:casesOrSuite as EvaluationSuite,cases=Array.isArray(casesOrSuite)?casesOrSuite:(casesOrSuite as EvaluationSuite).cases,started=Date.now(),results:EvaluationResult[]=[]
-  for(const test of cases){
+  const repetitions=options.repetitions??1;if(!Number.isSafeInteger(repetitions)||repetitions<1||repetitions>100)throw new Error('Evaluation repetitions must be an integer between 1 and 100')
+  for(let repetition=1;repetition<=repetitions;repetition++)for(const test of cases){
     const caseStarted=Date.now()
     try{
       const result=await runtime.execute({capability:test.capability,input:test.input,identity:test.identity}),durationMs=Date.now()-caseStarted,usage=usageFrom(result),scores=await scoreResult(result,test),failures:string[]=[]
@@ -26,10 +31,10 @@ export async function runEvaluation(runtime:Runtime,casesOrSuite:readonly Evalua
       if(durationMs>(test.limits?.maxDurationMs??Number.POSITIVE_INFINITY))failures.push(`duration ${durationMs}ms exceeds ${test.limits?.maxDurationMs}ms`)
       if(usage.tokens>(test.limits?.maxTokens??Number.POSITIVE_INFINITY))failures.push(`tokens ${usage.tokens} exceeds ${test.limits?.maxTokens}`)
       if(usage.costUsd>(test.limits?.maxCostUsd??Number.POSITIVE_INFINITY))failures.push(`cost $${usage.costUsd.toFixed(6)} exceeds $${test.limits?.maxCostUsd}`)
-      results.push({name:test.name,passed:failures.length===0&&result.run.status==='completed',durationMs,runId:result.run.id,tags:test.tags??[],tokens:usage.tokens,costUsd:usage.costUsd,scores,...(failures.length?{error:failures.join('; ')}:{})})
-    }catch(error){results.push({name:test.name,passed:false,durationMs:Date.now()-caseStarted,error:error instanceof Error?error.message:String(error),tags:test.tags??[],tokens:0,costUsd:0,scores:[]})}
+      results.push({name:test.name,passed:failures.length===0&&result.run.status==='completed',durationMs,runId:result.run.id,tags:test.tags??[],tokens:usage.tokens,costUsd:usage.costUsd,scores,...(repetitions>1?{repetition}:{}),...(failures.length?{error:failures.join('; ')}:{})})
+    }catch(error){results.push({name:test.name,passed:false,durationMs:Date.now()-caseStarted,error:error instanceof Error?error.message:String(error),tags:test.tags??[],tokens:0,costUsd:0,scores:[],...(repetitions>1?{repetition}:{})})}
   }
-  return reportFrom(results,{suite:suite?.name,variant:options.variant,durationMs:Date.now()-started})
+  const report=reportFrom(results,{suite:suite?.name,variant:options.variant,durationMs:Date.now()-started});if(options.store){if(!options.scope)throw new Error('Evaluation history requires an explicit tenant scope');await options.store.save({...options.scope,report})}return report
 }
 
 export async function compareEvaluations(variants:readonly EvaluationVariant[],casesOrSuite:readonly EvaluationCase[]|EvaluationSuite,baseline=variants[0]?.name):Promise<EvaluationComparison>{

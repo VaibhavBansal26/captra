@@ -139,6 +139,17 @@ CREATE TABLE IF NOT EXISTS captra_usage (
 CREATE INDEX IF NOT EXISTS captra_usage_tenant_time ON captra_usage (tenant_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS captra_usage_user_time ON captra_usage (tenant_id,user_id,created_at DESC);
 CREATE INDEX IF NOT EXISTS captra_usage_run ON captra_usage (run_id,created_at);
+
+CREATE TABLE IF NOT EXISTS captra_evaluation_reports (
+  id uuid PRIMARY KEY,
+  tenant_id text NOT NULL,
+  project_id text,
+  suite text,
+  variant text,
+  report jsonb NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_evaluations_history ON captra_evaluation_reports (tenant_id,project_id,suite,created_at DESC);
 `
 
 export function postgresVectorSchema(dimensions:number){if(!Number.isInteger(dimensions)||dimensions<1||dimensions>16_000)throw new Error('Vector dimensions must be an integer between 1 and 16000');return `

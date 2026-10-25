@@ -1,5 +1,11 @@
 # @captra-ai/devtools
 
+## 0.7.0
+
+### Minor Changes
+
+- Add repeated evaluation runs, tenant-scoped in-memory and PostgreSQL report history, and an evaluation history dashboard for Devtools.
+
 ## 0.6.0
 
 ### Minor Changes

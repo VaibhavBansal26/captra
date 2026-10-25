@@ -1,7 +1,7 @@
 import {describe,expect,it} from 'vitest'
 import {z} from 'zod'
 import {capability,capabilityViews,createRuntime,defineApp} from './core.js'
-import {compareEvaluations,enforceEvaluation,EvaluationRegressionError,formatEvaluation,runEvaluation,type EvaluationSuite} from './evals.js'
+import {compareEvaluations,enforceEvaluation,EvaluationRegressionError,formatEvaluation,InMemoryEvaluationStore,runEvaluation,type EvaluationSuite} from './evals.js'
 
 const identity={tenantId:'acme',userId:'u1',projectId:'p1'}
 function runtime(prefix='Hello'){const greet=capability({name:'greet',description:'Greet',input:z.object({name:z.string()}),output:z.object({message:z.string()}),run:async({name})=>({message:`${prefix} ${name}`}),view:{name:'Greeting'}});return createRuntime(defineApp({name:`Eval ${prefix}`,scopes:[],capabilities:[greet],surface:capabilityViews()}))}
@@ -11,4 +11,5 @@ describe('evaluations',()=>{
   it('runs named suites with scores and CI formats',async()=>{const report=await runEvaluation(runtime(),suite,{variant:'candidate'});expect(report).toMatchObject({suite:'Greeting quality',variant:'candidate',passed:1,passRate:1,tokens:0,costUsd:0,scoreAverages:{concise:.9}});expect(formatEvaluation(report)).toContain('Greeting quality — candidate');expect(formatEvaluation(report,'junit')).toContain('<testsuite');expect(JSON.parse(formatEvaluation(report,'json')).passed).toBe(1)})
   it('compares variants against a baseline',async()=>{const comparison=await compareEvaluations([{name:'baseline',runtime:runtime('Hello')},{name:'candidate',runtime:runtime('Hi')}],suite);expect(comparison.baseline).toBe('baseline');expect(comparison.deltas).toMatchObject([{variant:'candidate',passRate:0,tokens:0,costUsd:0,scores:{concise:0}}])})
   it('enforces quality, cost, token, and latency gates',async()=>{const report=await runEvaluation(runtime(),suite);expect(()=>enforceEvaluation(report,{minPassRate:1,minScores:{concise:.95},maxCostUsd:0,maxTokens:0})).toThrow(EvaluationRegressionError)})
+  it('runs repetitions and stores tenant-scoped history',async()=>{const store=new InMemoryEvaluationStore(),report=await runEvaluation(runtime(),suite,{variant:'repeat',repetitions:3,store,scope:{tenantId:'acme',projectId:'p1'}});expect(report.results).toHaveLength(3);expect(report.results.map(item=>item.repetition)).toEqual([1,2,3]);expect(await store.list({tenantId:'acme',suite:'Greeting quality'})).toMatchObject([{tenantId:'acme',projectId:'p1',report:{variant:'repeat'}}]);expect(await store.list({tenantId:'other'})).toEqual([])})
 })

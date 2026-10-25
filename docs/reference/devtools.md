@@ -3,11 +3,12 @@
 `@captra-ai/devtools` turns durable replay data into an inspectable developer surface.
 
 ```tsx
-import { CaptraDevtools, CaptraUsage } from 'captra/devtools'
+import { CaptraDevtools, CaptraEvaluations, CaptraUsage } from 'captra/devtools'
 
 const replay=await client.replay(runId)
 <CaptraDevtools replay={replay}/>
 <CaptraUsage groupBy="provider" items={usage.items}/>
+<CaptraEvaluations reports={evaluationHistory}/>
 ```
 
 The unstyled component displays run status, duration, agent steps, tool calls, actual versus reserved tokens, reported cost, recalled-memory count, checkpoints, ordered events, and validated input/output. Stable `data-captra-devtools` attributes let applications supply their own visual system.

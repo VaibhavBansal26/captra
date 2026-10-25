@@ -60,3 +60,27 @@ Wrap a live adapter with `recordModel()` to capture provider-neutral requests an
 `formatEvaluation(report,'junit')` creates output understood by common CI test-report viewers. `enforceEvaluation()` throws `EvaluationRegressionError` with structured failure reasons and the original report.
 
 Do not use the same model response as both the output under test and an LLM judge. Keep deterministic assertions and independent scorers for important safety or business requirements.
+
+## Repeated runs and history
+
+Repeat nondeterministic cases and save each completed report in a tenant-scoped history store:
+
+```ts
+const evaluations=new PostgresEvaluationStore(pool)
+
+await runEvaluation(runtime,suite,{
+  variant:'candidate',
+  repetitions:5,
+  store:evaluations,
+  scope:{tenantId:'acme',projectId:'support'},
+})
+
+const history=await evaluations.list({
+  tenantId:'acme',
+  projectId:'support',
+  suite:'Support quality',
+  limit:20,
+})
+```
+
+`InMemoryEvaluationStore` provides the same contract for local development. `CaptraEvaluations` from `captra/devtools` renders pass rate, average scores, tokens, cost, and P95 latency across stored reports.

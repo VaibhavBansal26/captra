@@ -1,5 +1,17 @@
 # captra
 
+## 0.13.0
+
+### Minor Changes
+
+- Add repeated evaluation runs, tenant-scoped in-memory and PostgreSQL report history, and an evaluation history dashboard for Devtools.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.11.0
+  - @captra-ai/postgres@0.7.0
+
 ## 0.12.0
 
 ### Minor Changes
