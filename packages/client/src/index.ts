@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type RemoteCapabilityResult, type RunRecord } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}
@@ -18,6 +18,8 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
     reject:(id:string)=>call(`/runs/${encodeURIComponent(id)}/reject`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
     cancel:(id:string)=>call(`/runs/${encodeURIComponent(id)}/cancel`,{method:'POST'}) as Promise<RunRecord>,
+    usage:(groupBy:UsageGroupBy='capability',query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage?${usageParams({...query,groupBy})}`) as Promise<{groupBy:UsageGroupBy;items:UsageSummary[]}>,
+    usageRecords:(query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage/records?${usageParams(query)}`) as Promise<UsageRecord[]>,
     async *stream<Name extends CapabilityName<App>>(capability:Name,input:CapabilityInput<App,Name>,idempotencyKey?:string):AsyncIterable<StreamMessage<CapabilityOutput<App,Name>>>{
       const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/stream`,{method:'POST',headers:{'content-type':'application/json',accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},body:JSON.stringify({capability,input,idempotencyKey})})
       assertProtocol(response)
@@ -29,3 +31,4 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
 }
 export type CaptraClient<App extends AgentApp=AgentApp>=ReturnType<typeof createCaptraClient<App>>
 function assertProtocol(response:Response){const protocol=response.headers.get('captra-protocol');if(protocol&&protocol!==CAPTRA_PROTOCOL_VERSION)throw new CaptraClientError(`Unsupported Captra protocol: ${protocol}`,426,'protocol_mismatch',response.headers.get('x-request-id')??undefined)}
+function usageParams(query:Record<string,unknown>){const params=new URLSearchParams();for(const [key,value] of Object.entries(query))if(value!==undefined)params.set(key,String(value));return params}

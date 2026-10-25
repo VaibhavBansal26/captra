@@ -1,0 +1,7 @@
+import {describe,expect,it} from 'vitest'
+import {InMemoryUsageStore} from './usage.js'
+
+describe('usage ledger',()=>{
+  it('filters by tenant and summarizes model cost',async()=>{const usage=new InMemoryUsageStore();await usage.record({runId:'r1',tenantId:'acme',userId:'u1',projectId:'p1',capability:'chat',provider:'openai',model:'gpt',attempt:1,status:'succeeded',inputTokens:10,outputTokens:5,cachedInputTokens:2,reasoningTokens:1,costUsd:.02,durationMs:100});await usage.record({runId:'r2',tenantId:'other',userId:'u2',projectId:'p2',capability:'chat',provider:'openai',model:'gpt',attempt:1,status:'failed',inputTokens:99,outputTokens:0,cachedInputTokens:0,reasoningTokens:0,costUsd:1,durationMs:10});expect(await usage.query({tenantId:'acme'})).toHaveLength(1);expect(await usage.summarize({tenantId:'acme'},'provider')).toEqual([{key:'openai',calls:1,succeeded:1,failed:0,skipped:0,inputTokens:10,outputTokens:5,cachedInputTokens:2,reasoningTokens:1,tokens:15,costUsd:.02,durationMs:100}])})
+  it('deduplicates a durable attempt id during resume',async()=>{const usage=new InMemoryUsageStore(),record={id:'run:chat:1:openai:1',runId:'run',tenantId:'acme',userId:'u1',projectId:'p1',capability:'chat',provider:'openai',attempt:1,status:'succeeded' as const,inputTokens:4,outputTokens:2,cachedInputTokens:0,reasoningTokens:0,costUsd:.01,durationMs:10};await usage.record(record);await usage.record(record);expect(await usage.query({tenantId:'acme'})).toHaveLength(1)})
+})

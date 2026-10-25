@@ -2,6 +2,8 @@
 
 The typed contract and execution runtime behind Captra: capabilities, agents, tools, scoped memory, approvals, budgets, durable runs, cancellation, checkpoints, effect receipts, telemetry, replay, and evaluations.
 
+`runtime.usage` records every model-provider attempt and can summarize cost, tokens, reliability, and latency by run, capability, user, tenant, provider, or model. Use `InMemoryUsageStore` locally and `PostgresUsageStore` for durable deployments.
+
 ```bash
 npm install @captra-ai/core zod
 ```

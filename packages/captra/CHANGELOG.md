@@ -1,5 +1,19 @@
 # captra
 
+## 0.11.0
+
+### Minor Changes
+
+- Add durable model-attempt usage accounting, tenant-safe reporting APIs, PostgreSQL aggregation, typed client queries, and Devtools cost views.
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/core@0.9.0
+  - @captra-ai/server@0.8.0
+  - @captra-ai/client@0.4.0
+  - @captra-ai/postgres@0.6.0
+
 ## 0.10.0
 
 ### Minor Changes

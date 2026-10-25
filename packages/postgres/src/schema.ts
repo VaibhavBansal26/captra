@@ -116,6 +116,29 @@ CREATE TABLE IF NOT EXISTS captra_state_events (
   at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS captra_state_events_history ON captra_state_events (tenant_id,key_hash,at,id);
+
+CREATE TABLE IF NOT EXISTS captra_usage (
+  id text PRIMARY KEY,
+  run_id uuid NOT NULL REFERENCES captra_runs(id) ON DELETE CASCADE,
+  tenant_id text NOT NULL,
+  user_id text NOT NULL,
+  project_id text NOT NULL,
+  capability text NOT NULL,
+  provider text NOT NULL,
+  model text,
+  attempt integer NOT NULL,
+  status text NOT NULL,
+  input_tokens bigint NOT NULL DEFAULT 0,
+  output_tokens bigint NOT NULL DEFAULT 0,
+  cached_input_tokens bigint NOT NULL DEFAULT 0,
+  reasoning_tokens bigint NOT NULL DEFAULT 0,
+  cost_usd double precision NOT NULL DEFAULT 0,
+  duration_ms bigint NOT NULL DEFAULT 0,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS captra_usage_tenant_time ON captra_usage (tenant_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS captra_usage_user_time ON captra_usage (tenant_id,user_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS captra_usage_run ON captra_usage (run_id,created_at);
 `
 
 export function postgresVectorSchema(dimensions:number){if(!Number.isInteger(dimensions)||dimensions<1||dimensions>16_000)throw new Error('Vector dimensions must be an integer between 1 and 16000');return `

@@ -1,5 +1,11 @@
 # @captra-ai/devtools
 
+## 0.6.0
+
+### Minor Changes
+
+- Add durable model-attempt usage accounting, tenant-safe reporting APIs, PostgreSQL aggregation, typed client queries, and Devtools cost views.
+
 ## 0.5.0
 
 ### Minor Changes

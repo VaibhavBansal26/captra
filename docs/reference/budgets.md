@@ -40,3 +40,18 @@ The adapter must atomically validate and reserve every applicable scope. A datab
 Provider usage remains the accounting source of truth. Supply provider-specific `estimateTokens` and `estimateCostUsd` functions when exact tokenizer and pricing behavior matters.
 
 When `createModelFallback()` is used, usage from the successful response and any billed failed attempts is aggregated before the reservation is committed. Attempt-level usage remains available in model traces for provider-level reporting.
+
+## Durable usage reporting
+
+Every model attempt is also written to `runtime.usage`. Records include tenant, user, project, run, capability, provider, model, status, latency, input/output/cached/reasoning tokens, and reported cost. The in-memory store is useful locally; configure `PostgresUsageStore` in production.
+
+```ts
+const runtime=createRuntime(app,{usage:new PostgresUsageStore(pool)})
+
+await runtime.usage.summarize(
+  {tenantId:'acme',from:Date.now()-86_400_000},
+  'provider',
+)
+```
+
+The server exposes `GET /usage?groupBy=capability` and `GET /usage/records`. Both are scoped to the authenticated user by default. Tenant-wide queries require `scope=tenant` and an `authorizeTenantUsage` policy on the server handler.

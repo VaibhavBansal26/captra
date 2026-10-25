@@ -16,4 +16,5 @@ describe('@captra-ai/client',()=>{
     expect(body).toEqual({capability:'greet',input:{name:'Ada'}})
   })
   it('exposes stable server failure metadata',async()=>{const client=createCaptraClient<typeof app>({baseUrl:'https://captra.test',fetch:async()=>Response.json({error:'Invalid input',code:'validation_failed',requestId:'req-1'},{status:422})});const failure=await client.execute('greet',{name:'Ada'}).catch(error=>error);expect(failure).toBeInstanceOf(CaptraClientError);expect(failure).toMatchObject({status:422,code:'validation_failed',requestId:'req-1'})})
+  it('builds typed usage report queries',async()=>{let url='';const client=createCaptraClient<typeof app>({baseUrl:'https://captra.test',fetch:async input=>{url=String(input);return Response.json({groupBy:'provider',items:[]})}});await client.usage('provider',{scope:'tenant',from:100});expect(url).toBe('https://captra.test/usage?scope=tenant&from=100&groupBy=provider')})
 })
