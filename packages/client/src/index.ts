@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type ConversationPage, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}
@@ -14,6 +14,7 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     enqueue:<Name extends CapabilityName<App>>(capability:Name,input:CapabilityInput<App,Name>,options:{idempotencyKey?:string;maxAttempts?:number;availableAt?:number}={})=>call('/runs/queue',{method:'POST',body:JSON.stringify({capability,input,...options})}) as Promise<RunRecord>,
     run:(id:string)=>call(`/runs/${encodeURIComponent(id)}`) as Promise<RunRecord>,
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
+    conversationMessages:(id:string,options:{cursor?:string;limit?:number}={})=>call(`/conversations/${encodeURIComponent(id)}/messages?${usageParams(options)}`) as Promise<ConversationPage>,
     replay:(id:string)=>call(`/runs/${encodeURIComponent(id)}/replay`) as Promise<{run:RunRecord;events:CaptraEvent[];checkpoints:Array<{id:string;runId:string;key:string;sequence:number;state:unknown;createdAt:number}>}>,
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
     async *approveStream(id:string,signal?:AbortSignal):AsyncIterable<StreamMessage>{const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/${encodeURIComponent(id)}/approve/stream`,{method:'POST',headers:{accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},signal});yield* readStream(response)},

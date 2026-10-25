@@ -4,6 +4,8 @@ The typed contract and execution runtime behind Captra: capabilities, agents, to
 
 Use `chat()` for a streaming conversation that keeps those same guarantees. It emits `chat.delta` events, enforces token and cost reservations, records provider usage, supports scoped memory, and remains an ordinary discoverable Captra capability.
 
+Set `durable:true` to persist message history through the runtime's tenant-safe `ConversationStore`. `InMemoryConversationStore` supports local development and cursor pagination; production adapters implement the same small interface.
+
 `runtime.usage` records every model-provider attempt and can summarize cost, tokens, reliability, and latency by run, capability, user, tenant, provider, or model. Use `InMemoryUsageStore` locally and `PostgresUsageStore` for durable deployments.
 
 ```bash

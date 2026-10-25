@@ -19,4 +19,6 @@ Components expose stable `data-captra` attributes and remain fully styleable by 
 
 For conversational interfaces, `useChat(client, 'support.chat')` provides messages, token deltas, stop, reconnect, streaming approvals, durable run status, usage, and budget state without introducing a second chat protocol. Render the accessible, unstyled default with `<CaptraChat chat={chat} />`, then customize it through render props and stable `data-captra` attributes.
 
+For a capability declared with `durable:true`, pass `{durable:true, conversationId}` to `useChat`. The hook sends only the newest turn and exposes `loadMore()` plus `hasMore` for cursor pagination.
+
 [React documentation](https://vaibhavbansal26.github.io/captra/reference/react) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/react) · MIT

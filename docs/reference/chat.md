@@ -13,6 +13,7 @@ export const supportChat = chat({
   description: 'Answer customer support questions',
   instructions: 'Be accurate, concise, and never invent account data.',
   model: createOpenAI({ model: 'gpt-5-mini' }),
+  durable: true,
   memory: ['user', 'project'],
   budget: { maxTokens: 8_000, maxOutputTokens: 800 },
 })
@@ -34,7 +35,21 @@ export function SupportChat() {
 }
 ```
 
-`useChat` returns `messages`, `send`, `stop`, `reconnect`, `approve`, `reject`, `reset`, `run`, `status`, `approval`, `events`, `pending`, `error`, `draft`, `usage`, and `budget`.
+`useChat` returns `messages`, `send`, `stop`, `reconnect`, `approve`, `reject`, `loadMore`, `reset`, `conversationId`, `hasMore`, `run`, `status`, `approval`, `events`, `pending`, `error`, `draft`, `usage`, and `budget`.
+
+With `durable: true`, Captra stores each message through the runtime's `ConversationStore`. Configure the hook with the same mode so it sends only the new user message:
+
+```tsx
+const chat = useChat(client, 'support.chat', {
+  durable: true,
+  conversationId: route.params.id,
+  pageSize: 30,
+})
+
+await chat.loadMore()
+```
+
+`loadMore()` prepends the next cursor page without duplicating message IDs. If no conversation ID is supplied, the first completed response returns the generated ID. The built-in store is for local development; production deployments should provide a durable `ConversationStore` implementation through `createRuntime({ conversations })`.
 
 Use `reconnect(runId)` after a reload or transport interruption. The hook reloads durable events, continues polling the run, deduplicates event IDs, and restores the final assistant message. `stop()` aborts the browser stream and cancels the active server run when its run ID is known.
 
