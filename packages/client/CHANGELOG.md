@@ -1,5 +1,11 @@
 # @captra-ai/client
 
+## 0.5.0
+
+### Minor Changes
+
+- 59451c5: Add governed streaming chat as a first-class capability, typed model stream events, cancellable client streams, OpenAI usage-aware completion events, and a React `useChat` hook with approvals, cancellation, reconnect, usage, and budget state.
+
 ## 0.4.0
 
 ### Minor Changes

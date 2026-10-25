@@ -1,6 +1,6 @@
 {
   "name": "captra",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "description": "The AI-native JavaScript framework for typed capabilities, agents, memory, tools, and generated UI.",
   "license": "MIT",
   "repository": {
@@ -67,12 +67,12 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@captra-ai/client": "^0.4.0",
-    "@captra-ai/core": "^0.13.0",
-    "@captra-ai/openai": "^0.5.0",
-    "@captra-ai/mcp": "^0.1.0",
+    "@captra-ai/client": "^0.5.0",
+    "@captra-ai/core": "^0.14.0",
+    "@captra-ai/openai": "^0.6.0",
+    "@captra-ai/mcp": "^0.1.1",
     "@captra-ai/postgres": "^0.7.0",
-    "@captra-ai/react": "^0.4.1",
+    "@captra-ai/react": "^0.5.0",
     "@captra-ai/server": "^0.8.0",
     "@captra-ai/state": "^0.4.2"
   },

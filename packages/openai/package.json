@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/openai",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "OpenAI Responses API model adapter for Captra.",
   "license": "MIT",
   "repository": {
