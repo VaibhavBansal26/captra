@@ -24,6 +24,33 @@ CREATE UNIQUE INDEX IF NOT EXISTS captra_runs_idempotency
 CREATE INDEX IF NOT EXISTS captra_runs_identity ON captra_runs (tenant_id,user_id,created_at DESC);
 ALTER TABLE captra_runs ADD COLUMN IF NOT EXISTS approval_identity jsonb;
 
+CREATE TABLE IF NOT EXISTS captra_conversations (
+  tenant_id text NOT NULL,
+  id text NOT NULL,
+  user_id text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,id)
+);
+CREATE INDEX IF NOT EXISTS captra_conversations_owner
+  ON captra_conversations (tenant_id,user_id,updated_at DESC,id);
+
+CREATE TABLE IF NOT EXISTS captra_conversation_messages (
+  sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  tenant_id text NOT NULL,
+  conversation_id text NOT NULL,
+  id text NOT NULL,
+  user_id text NOT NULL,
+  role text NOT NULL CHECK (role IN ('user','assistant')),
+  content text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (tenant_id,conversation_id,id),
+  FOREIGN KEY (tenant_id,conversation_id)
+    REFERENCES captra_conversations(tenant_id,id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS captra_conversation_messages_page
+  ON captra_conversation_messages (tenant_id,conversation_id,sequence DESC);
+
 CREATE TABLE IF NOT EXISTS captra_events (
   id uuid PRIMARY KEY,
   run_id uuid NOT NULL REFERENCES captra_runs(id) ON DELETE CASCADE,

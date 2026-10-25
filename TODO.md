@@ -5,8 +5,8 @@ This checklist tracks the work between the current developer preview and a credi
 ## P0 — Production chat and durability
 
 - [ ] Add `PostgresConversationStore`.
-  - [ ] Design tenant-, user-, and conversation-scoped tables and migrations.
-  - [ ] Add ordered message indexes and opaque cursor pagination.
+  - [x] Design tenant-, user-, and conversation-scoped tables and migrations.
+  - [x] Add ordered message indexes and opaque cursor pagination.
   - [ ] Implement append, list, archive, delete, and retention operations.
   - [ ] Test tenant isolation, ownership checks, deduplication, and concurrent appends against real PostgreSQL.
   - [ ] Document migration, backup, retention, and adapter configuration.

@@ -16,7 +16,7 @@ Configure authentication, CORS, request limits, authorization, durable stores, a
 
 ## Durable execution
 
-Use `@captra-ai/postgres` for tenant-scoped memory, runs, ordered events, checkpoints, idempotency, work queues, semantic memory, and shared state. Run migrations during deployment rather than in every request process.
+Use `@captra-ai/postgres` for tenant-scoped conversations, memory, runs, ordered events, checkpoints, idempotency, work queues, semantic memory, and shared state. Run migrations during deployment rather than in every request process.
 
 Background workers claim expiring queue leases. Checkpoints allow a replacement worker to resume without repeating completed tool calls.
 
@@ -27,7 +27,7 @@ Background workers claim expiring queue leases. Checkpoints allow a replacement 
 - Allowlist exact outbound origins for every HTTP tool
 - Configure explicit CORS origins
 - Apply request-size and execution budgets
-- Use durable run, checkpoint, and queue stores
+- Use durable conversation, run, checkpoint, and queue stores
 - Run PostgreSQL migrations before traffic shifts
 - Export telemetry and alert on failures and lease conflicts
 - Log original server failures through `onError` with their request IDs

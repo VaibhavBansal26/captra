@@ -23,7 +23,17 @@ export const crm=definePlugin({
 
 ## Backend adapters
 
-The core runtime depends on interfaces rather than vendors. Custom infrastructure can implement model, memory, run, checkpoint, queue, state, planning, and telemetry contracts.
+The core runtime depends on interfaces rather than vendors. Custom infrastructure can implement model, conversation, memory, run, checkpoint, queue, state, planning, and telemetry contracts.
+
+For durable chat, configure `PostgresConversationStore` after applying `migrateCaptra()`:
+
+```ts
+const runtime=createRuntime(app,{
+  conversations:new PostgresConversationStore(pool),
+})
+```
+
+Conversation history is tenant-scoped, bound to its creating user, deduplicated by message ID, and read through backward cursor pages.
 
 A model adapter should translate `ModelRequest.output` into its provider's native JSON Schema mode when available. The adapter must still return the textual JSON in `ModelResponse.text`; Captra owns normalization, Zod validation, bounded repair, and portable error semantics.
 

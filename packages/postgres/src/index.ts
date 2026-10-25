@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type CheckpointRecord,type CheckpointStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type ConversationMessage,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
 import { hashStateKey,StateConflictError,StateLeaseError,validateCommit,validateLease,validateLeaseRequest,type AcquireLeaseOptions,type CommitOptions,type SharedStateAdapter,type SharedStateEvent,type SharedStateSnapshot,type StateKey,type StateLease } from '@captra-ai/state'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
@@ -18,6 +18,7 @@ type StateEventRow={id:string;key:StateKey;type:SharedStateEvent['type'];actor:s
 type EffectRow={tenant_id:string;tool:string;key:string;status:EffectReceipt['status'];output?:unknown;error?:string;created_at:Date|string;updated_at:Date|string}
 type UsageRow={id:string;run_id:string;tenant_id:string;user_id:string;project_id:string;capability:string;provider:string;model?:string;attempt:number;status:UsageRecord['status'];input_tokens:number|string;output_tokens:number|string;cached_input_tokens:number|string;reasoning_tokens:number|string;cost_usd:number|string;duration_ms:number|string;created_at:Date|string}
 type EvaluationRow={id:string;tenant_id:string;project_id?:string;suite?:string;variant?:string;report:EvaluationReport;created_at:Date|string}
+type ConversationMessageRow={sequence:number|string;tenant_id:string;conversation_id:string;id:string;user_id:string;role:ConversationMessage['role'];content:string;created_at:Date|string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,approvalIdentity:row.approval_identity,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
@@ -28,6 +29,54 @@ const stateFrom=<T>(row:StateRow):SharedStateSnapshot<T>=>({key:row.key,value:ro
 const stateEventFrom=(row:StateEventRow):SharedStateEvent=>({id:row.id,key:row.key,type:row.type,actor:row.actor,version:Number(row.version),at:millis(row.at),...(row.token===undefined?{}:{token:Number(row.token)})})
 const usageFrom=(row:UsageRow):UsageRecord=>({id:row.id,runId:row.run_id,tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,capability:row.capability,provider:row.provider,model:row.model,attempt:row.attempt,status:row.status,inputTokens:Number(row.input_tokens),outputTokens:Number(row.output_tokens),cachedInputTokens:Number(row.cached_input_tokens),reasoningTokens:Number(row.reasoning_tokens),tokens:Number(row.input_tokens)+Number(row.output_tokens),costUsd:Number(row.cost_usd),durationMs:Number(row.duration_ms),createdAt:millis(row.created_at)})
 const evaluationFrom=(row:EvaluationRow):StoredEvaluationReport=>({id:row.id,tenantId:row.tenant_id,projectId:row.project_id,report:row.report,createdAt:millis(row.created_at)})
+const conversationMessageFrom=(row:ConversationMessageRow):ConversationMessage=>({id:row.id,conversationId:row.conversation_id,tenantId:row.tenant_id,userId:row.user_id,role:row.role,content:row.content,createdAt:millis(row.created_at)})
+
+export class PostgresConversationStore implements ConversationStore{
+  constructor(readonly client:SqlClient){}
+
+  async append(conversationId:string,identity:ExecutionIdentity,messages:readonly ChatMessage[]){
+    if(!conversationId)throw new Error('Conversation ID is required')
+    if(!messages.length)return []
+    const rows=messages.map((message,index)=>({id:message.id??crypto.randomUUID(),role:message.role,content:message.content,createdAt:Date.now()+index}))
+    const result=await this.client.query<ConversationMessageRow>(`WITH owned AS (
+      INSERT INTO captra_conversations (tenant_id,id,user_id) VALUES ($1,$2,$3)
+      ON CONFLICT (tenant_id,id) DO UPDATE SET updated_at=now()
+      WHERE captra_conversations.user_id=EXCLUDED.user_id
+      RETURNING tenant_id,id,user_id
+    ), incoming AS (
+      SELECT * FROM jsonb_to_recordset($4::jsonb) AS message(id text,role text,content text,created_at timestamptz)
+    )
+    INSERT INTO captra_conversation_messages (tenant_id,conversation_id,id,user_id,role,content,created_at)
+    SELECT owned.tenant_id,owned.id,incoming.id,owned.user_id,incoming.role,incoming.content,incoming.created_at
+    FROM owned CROSS JOIN incoming
+    ON CONFLICT (tenant_id,conversation_id,id) DO NOTHING
+    RETURNING *`,[identity.tenantId,conversationId,identity.userId,JSON.stringify(rows.map(row=>({id:row.id,role:row.role,content:row.content,created_at:new Date(row.createdAt).toISOString()})))])
+    if(!result.rows.length){
+      const owned=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+      if(!owned.rows[0])throw new Error('Conversation not found')
+    }
+    return result.rows.sort((left,right)=>Number(left.sequence)-Number(right.sequence)).map(conversationMessageFrom)
+  }
+
+  async list(conversationId:string,identity:ExecutionIdentity,options:{cursor?:string;limit?:number}={}){
+    const limit=Math.max(1,Math.min(100,options.limit??30)),values:unknown[]=[identity.tenantId,conversationId,identity.userId]
+    let cursor=''
+    if(options.cursor){values.push(options.cursor);cursor=`AND messages.sequence<(SELECT cursor.sequence FROM captra_conversation_messages cursor WHERE cursor.tenant_id=$1 AND cursor.conversation_id=$2 AND cursor.id=$4)`}
+    values.push(limit+1)
+    const result=await this.client.query<ConversationMessageRow>(`SELECT messages.* FROM captra_conversation_messages messages
+      JOIN captra_conversations conversations ON conversations.tenant_id=messages.tenant_id AND conversations.id=messages.conversation_id
+      WHERE conversations.tenant_id=$1 AND conversations.id=$2 AND conversations.user_id=$3 ${cursor}
+      ORDER BY messages.sequence DESC LIMIT $${values.length}`,values)
+    if(!result.rows.length){
+      const conversation=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+      if(!conversation.rows[0]&&await this.exists(identity.tenantId,conversationId))throw new Error('Conversation not found')
+    }
+    const hasMore=result.rows.length>limit,selected=result.rows.slice(0,limit).reverse().map(conversationMessageFrom)
+    return {items:selected,nextCursor:hasMore?selected[0]?.id:undefined}
+  }
+
+  private async exists(tenantId:string,conversationId:string){const result=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2',[tenantId,conversationId]);return Boolean(result.rows[0])}
+}
 
 export class PostgresRunStore implements RunStore{
   constructor(readonly client:SqlClient){}

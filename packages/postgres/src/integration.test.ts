@@ -1,7 +1,7 @@
 import { afterAll,beforeAll,describe,expect,it } from 'vitest'
 import { Pool } from 'pg'
 import { StateConflictError,StateLeaseError } from '@captra-ai/state'
-import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresMemoryStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresSharedStateAdapter,PostgresWorkQueue,type SqlClient } from './index.js'
+import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresConversationStore,PostgresMemoryStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresSharedStateAdapter,PostgresWorkQueue,type SqlClient } from './index.js'
 
 const connectionString=process.env.CAPTRA_POSTGRES_URL
 const suite=connectionString?describe:describe.skip
@@ -33,6 +33,19 @@ suite('PostgreSQL integration',()=>{
     await memory.remember({tenantId:'acme',scope:'user',ownerId:'u1',type:'fact',content:'Expired fact',confidence:1,expiresAt:Date.now()-1_000})
     const recalled=await memory.recall(['user'],{tenantId:'acme',userId:'u1',projectId:'p1'})
     expect(recalled.map(item=>item.content)).toEqual(['Prefers dark mode'])
+  })
+
+  it('persists deduplicated conversation pages inside tenant and owner boundaries',async()=>{
+    const conversations=new PostgresConversationStore(client),ada={tenantId:'chat',userId:'ada',projectId:'p1'},grace={tenantId:'chat',userId:'grace',projectId:'p1'}
+    await conversations.append('c1',ada,[{id:'m1',role:'user',content:'one'},{id:'m2',role:'assistant',content:'two'},{id:'m3',role:'user',content:'three'}])
+    expect(await conversations.append('c1',ada,[{id:'m3',role:'user',content:'three'}])).toEqual([])
+    const latest=await conversations.list('c1',ada,{limit:2});expect(latest.items.map(item=>item.id)).toEqual(['m2','m3']);expect(latest.nextCursor).toBe('m2')
+    const older=await conversations.list('c1',ada,{cursor:latest.nextCursor,limit:2});expect(older.items.map(item=>item.id)).toEqual(['m1']);expect(older.nextCursor).toBeUndefined()
+    await Promise.all(Array.from({length:8},()=>conversations.append('c1',ada,[{id:'m4',role:'assistant',content:'once'}])))
+    expect((await conversations.list('c1',ada,{limit:10})).items.filter(item=>item.id==='m4')).toHaveLength(1)
+    await expect(conversations.list('c1',grace)).rejects.toThrow('Conversation not found')
+    await expect(conversations.append('c1',grace,[{role:'user',content:'intrusion'}])).rejects.toThrow('Conversation not found')
+    expect(await conversations.list('c1',{...ada,tenantId:'other'})).toEqual({items:[],nextCursor:undefined})
   })
 
   it('deduplicates and ranks semantic memory with pgvector',async()=>{
