@@ -1,5 +1,11 @@
 # @captra-ai/core
 
+## 0.15.0
+
+### Minor Changes
+
+- 2aa8cbd: Add an accessible customizable `CaptraChat` component and stream approval continuations through the runtime, server, client, and React hook.
+
 ## 0.14.0
 
 ### Minor Changes

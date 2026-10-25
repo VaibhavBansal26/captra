@@ -10,13 +10,13 @@
     "eval": "captra eval"
   },
   "dependencies": {
-    "captra": "^0.16.0",
+    "captra": "^0.17.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@captra-ai/cli": "^0.7.2",
+    "@captra-ai/cli": "^0.7.3",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

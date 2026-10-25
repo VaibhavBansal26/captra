@@ -1,5 +1,20 @@
 # captra
 
+## 0.17.0
+
+### Minor Changes
+
+- 2aa8cbd: Add an accessible customizable `CaptraChat` component and stream approval continuations through the runtime, server, client, and React hook.
+
+### Patch Changes
+
+- Updated dependencies [2aa8cbd]
+  - @captra-ai/core@0.15.0
+  - @captra-ai/client@0.6.0
+  - @captra-ai/server@0.9.0
+  - @captra-ai/react@0.6.0
+  - @captra-ai/mcp@0.1.2
+
 ## 0.16.0
 
 ### Minor Changes

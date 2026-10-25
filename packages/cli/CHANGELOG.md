@@ -1,5 +1,12 @@
 # @captra-ai/cli
 
+## 0.7.3
+
+### Patch Changes
+
+- Updated dependencies [2aa8cbd]
+  - @captra-ai/core@0.15.0
+
 ## 0.7.2
 
 ### Patch Changes
