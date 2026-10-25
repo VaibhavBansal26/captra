@@ -1,5 +1,11 @@
 # @captra-ai/core
 
+## 0.12.0
+
+### Minor Changes
+
+- Complete the evaluation workflow with portable JSON and JSONL datasets, schema-constrained model judge scorers, repeated-run confidence intervals, a TypeScript-aware `captra eval` command, and GitHub Actions annotations.
+
 ## 0.11.0
 
 ### Minor Changes

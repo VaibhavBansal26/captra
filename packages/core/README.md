@@ -28,6 +28,8 @@ External writes should be declared as write tools with a stable `idempotencyKey`
 
 Structured generation uses provider-native JSON Schema when supported, then normalizes fences, validates with Zod, and performs one bounded repair attempt before returning a typed `StructuredOutputError`.
 
+Evaluation suites support portable JSON/JSONL datasets, independent schema-constrained model judges, repeated runs, 95% confidence intervals, persistent history, and CI formats including JUnit and GitHub Actions annotations.
+
 [Core documentation](https://vaibhavbansal26.github.io/captra/reference/capabilities) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/core) · MIT
 
 Network tools are opt-in. Use `createFetchJsonTool({allowedOrigins:[...]})`; `builtinTools` contains only scoped memory operations.

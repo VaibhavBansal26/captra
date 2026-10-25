@@ -6,16 +6,17 @@
     "dev": "concurrently -k \"vite\" \"tsx watch src/server.ts\"",
     "build": "captra secrets && tsc -p tsconfig.app.json --noEmit && vite build && captra secrets --dist && tsc -p tsconfig.server.json",
     "start": "node dist-server/server.js",
-    "test": "vitest run"
+    "test": "vitest run",
+    "eval": "captra eval"
   },
   "dependencies": {
-    "captra": "^0.13.0",
+    "captra": "^0.14.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"
   },
   "devDependencies": {
-    "@captra-ai/cli": "^0.6.0",
+    "@captra-ai/cli": "^0.7.0",
     "@types/node": "^24.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

@@ -3,6 +3,8 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSy
 import { basename, dirname, extname, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
+import { tsImport } from 'tsx/esm/api'
+import { enforceEvaluation,formatEvaluation,runEvaluation } from '@captra-ai/core'
 
 const [, , command='help', ...arguments_] = process.argv
 const positional=arguments_.filter(value=>!value.startsWith('--')),argument=positional[0],root=resolve(argument??'.')
@@ -12,6 +14,7 @@ if(command==='create'||command==='init') createProject(root)
 else if(command==='dev') run('npm',['run','dev'],root)
 else if(command==='build'){if(!secretCheck(root,{dist:false}))process.exit(1);run('npm',['run','build'],root)}
 else if(command==='test') run('npm',['test'],root)
+else if(command==='eval') await evaluate(argument??'captra.eval.ts',arguments_)
 else if(command==='inspect') inspect(root)
 else if(command==='doctor') doctor(root)
 else if(command==='secrets'||command==='check-secrets'){if(!secretCheck(root,{dist:arguments_.includes('--dist')}))process.exitCode=1}
@@ -33,6 +36,16 @@ function inspect(directory){
   const pkgPath=resolve(directory,'package.json')
   if(existsSync(pkgPath)){const pkg=JSON.parse(readFileSync(pkgPath,'utf8'));const deps={...pkg.dependencies,...pkg.devDependencies},frameworks=deps.captra?['captra']:['@captra-ai/core','@captra-ai/react',...(fullStack?['@captra-ai/client','@captra-ai/server']:[])];for(const name of frameworks)console.log(`${deps[name]?'✓':'×'} ${name}${deps[name]?` ${deps[name]}`:''}`)}
   console.log('')
+}
+async function evaluate(file,arguments_){
+  const path=resolve(file),module=await tsImport(path,{parentURL:import.meta.url}),config=module.default??module.evaluation
+  if(!config?.runtime||!config?.suite)fail('Evaluation config must export { runtime, suite } as default or evaluation')
+  const value=name=>arguments_.find(item=>item.startsWith(`--${name}=`))?.slice(name.length+3)
+  const format=value('format')??(process.env.GITHUB_ACTIONS==='true'?'github':'markdown'),repetitions=value('repetitions')===undefined?config.options?.repetitions:Number(value('repetitions'))
+  if(!['json','markdown','junit','github'].includes(format))fail('Evaluation format must be json, markdown, junit, or github')
+  const report=await runEvaluation(config.runtime,config.suite,{...config.options,...(repetitions===undefined?{}:{repetitions})}),output=formatEvaluation(report,format)
+  const outputPath=value('output');if(outputPath)writeFileSync(resolve(outputPath),`${output}\n`);else console.log(output)
+  try{if(config.thresholds)enforceEvaluation(report,config.thresholds);if(report.failed&&!config.thresholds)process.exitCode=1}catch(error){if(format!=='github')console.error(error instanceof Error?error.message:String(error));process.exitCode=1}
 }
 function doctor(directory){
   const findings=[]
@@ -90,4 +103,4 @@ function title(value){return value.split(/[-_.]+/).filter(Boolean).map(word=>wor
 function javascriptName(value){const words=value.split(/[-_.]+/).filter(Boolean);const name=words[0]+words.slice(1).map(word=>word[0].toUpperCase()+word.slice(1)).join('');return /^\d/.test(name)?`captra${name}`:name}
 function run(binary,args,cwd){const result=spawnSync(binary,args,{cwd,stdio:'inherit',shell:process.platform==='win32'});process.exit(result.status??1)}
 function fail(message){console.error(message);process.exit(1)}
-function help(){console.log(`\nCaptra — the capability-first AI application framework\n\n  captra create <directory>\n  captra add capability <name> [directory]\n  captra add tool <name> [directory]\n  captra add plugin <name> [directory]\n  captra doctor [directory]\n  captra secrets [directory] [--dist]\n  captra dev [directory]\n  captra build [directory]\n  captra test [directory]\n  captra inspect [directory]\n`)}
+function help(){console.log(`\nCaptra — the capability-first AI application framework\n\n  captra create <directory>\n  captra add capability <name> [directory]\n  captra add tool <name> [directory]\n  captra add plugin <name> [directory]\n  captra doctor [directory]\n  captra secrets [directory] [--dist]\n  captra eval [config] [--format=json|markdown|junit|github] [--output=file] [--repetitions=n]\n  captra dev [directory]\n  captra build [directory]\n  captra test [directory]\n  captra inspect [directory]\n`)}

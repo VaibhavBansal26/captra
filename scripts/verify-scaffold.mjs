@@ -19,11 +19,12 @@ try{
   for(const file of ['src/capabilities/summarize-notes.tsx','src/tools/search-docs.ts','src/plugins/audit-kit.ts'])if(!exists(file))throw new Error(`CLI did not generate ${file}`)
   run('npm',['run','build'],project)
   run('npm',['test'],project)
+  run(process.execPath,[join(repository,'packages/cli/bin/captra.js'),'eval',join(project,'captra.eval.ts'),'--format=json'],repository)
   const appPath=join(project,'src/App.tsx'),originalApp=readFileSync(appPath,'utf8'),fakeSecret='sk-proj-captraRegressionSecret123456789'
   appendFileSync(appPath,`\nconst leakedCredential='${fakeSecret}'\n`);expectBlocked('credential-like literal found',fakeSecret)
   writeFileSync(appPath,`${originalApp}\nimport 'captra/openai'\n`);expectBlocked('server-only import captra/openai')
   writeFileSync(appPath,`${originalApp}\nconst leakedEnv=process.env.OPENAI_API_KEY\n`);expectBlocked('browser-reachable environment access OPENAI_API_KEY')
-  console.log('✓ create-captra full-stack scaffold builds and tests')
+  console.log('✓ create-captra full-stack scaffold builds, tests, and evaluates')
 }finally{rmSync(temporary,{recursive:true,force:true})}
 
 function run(command,args,cwd){const result=spawnSync(command,args,{cwd,stdio:'pipe',encoding:'utf8'});if(result.status!==0)throw new Error(`${command} ${args.join(' ')} failed\n${result.stdout}\n${result.stderr}`)}

@@ -8,6 +8,7 @@ captra add capability summarize-notes
 captra add tool search-docs
 captra add plugin audit-kit
 captra doctor
+captra eval captra.eval.ts --repetitions=5
 captra dev my-app
 captra build my-app
 captra test my-app
@@ -29,6 +30,16 @@ Checks Node, the Captra dependency, expected project structure, TypeScript confi
 ## `inspect`
 
 Validates and summarizes a Captra project and its installed framework packages. Use it in CI to catch incomplete registrations and incompatible setup.
+
+## `eval`
+
+Loads a TypeScript or JavaScript evaluation config exporting `{runtime,suite,options?,thresholds?}`, runs the suite, and enforces its quality gates. Formats include Markdown, JSON, JUnit XML, and GitHub Actions annotations. In GitHub Actions, annotations are selected automatically.
+
+```bash
+captra eval                           # captra.eval.ts
+captra eval evals/support.eval.ts --format=json --output=artifacts/eval.json
+captra eval --repetitions=10
+```
 
 ## `secrets`
 

@@ -84,3 +84,42 @@ const history=await evaluations.list({
 ```
 
 `InMemoryEvaluationStore` provides the same contract for local development. `CaptraEvaluations` from `captra/devtools` renders pass rate, average scores, tokens, cost, and P95 latency across stored reports.
+
+Every new report includes a 95% Wilson confidence interval for pass rate and a 95% mean interval for each scorer. Use repetitions before treating small score changes as meaningful.
+
+## Portable datasets
+
+`loadEvaluationDataset()` validates versioned JSON or JSONL without executing code. Dataset files can contain inputs, identities, tags, and per-case resource limits. Add assertions and scorers in the trusted evaluation config.
+
+```ts
+import {readFile} from 'node:fs/promises'
+import {createModelJudgeScorer,loadEvaluationDataset} from 'captra'
+
+const dataset=loadEvaluationDataset(await readFile('evals/support.jsonl','utf8'))
+const judge=createModelJudgeScorer({
+  name:'helpfulness',model:independentJudge,
+  rubric:'The answer is accurate, direct, and does not invent policy.',
+  threshold:.8,
+})
+
+export default {
+  runtime,
+  suite:{...dataset,cases:dataset.cases.map(test=>({...test,scorers:[judge]}))},
+  options:{variant:'candidate',repetitions:5},
+  thresholds:{minPassRate:.95,minScores:{helpfulness:.85}},
+}
+```
+
+The model judge requests strict JSON Schema output, strips optional Markdown fences, validates its score and explanation, and marks retrieved output as untrusted data in the judge prompt.
+
+## Evaluation CLI and pull-request annotations
+
+Save the configuration above as `captra.eval.ts`, then run:
+
+```bash
+npx captra eval
+npx captra eval captra.eval.ts --repetitions=10 --format=json --output=artifacts/eval.json
+npx captra eval captra.eval.ts --format=junit --output=artifacts/eval.xml
+```
+
+The command exits nonzero when configured thresholds fail, or when a case fails without explicit thresholds. In GitHub Actions it defaults to `github` output, which creates inline workflow annotations; select it elsewhere with `--format=github`.

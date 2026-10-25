@@ -1,5 +1,12 @@
 # create-captra
 
+## 0.5.8
+
+### Patch Changes
+
+- Updated dependencies
+  - @captra-ai/cli@0.7.0
+
 ## 0.5.7
 
 ### Patch Changes
