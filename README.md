@@ -285,6 +285,7 @@ Plugin order is deterministic: plugin hooks wrap app hooks, and app-local tools 
 - `builtinTools` — scoped remember, recall, and forget operations
 - `createFetchJsonTool()` — opt-in JSON HTTP access with exact outbound-origin, header, redirect, and response-size policy
 - `useCaptra()` / `useCapability()` — React orchestration hooks
+- `chat()` / `useChat()` — governed streaming chat with memory, budgets, cancellation, approvals, and reconnect
 
 ## Durable PostgreSQL runtime
 

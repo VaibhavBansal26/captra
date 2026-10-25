@@ -42,6 +42,7 @@ export default defineConfig({
           {text:'Devtools',link:'/reference/devtools'},
           {text:'Replay & evaluations',link:'/reference/evaluations'},
           {text:'Model Context Protocol',link:'/reference/mcp'},
+          {text:'Chat capability & useChat',link:'/reference/chat'},
           {text:'React & generated UI',link:'/reference/react'},
         ]},
         {text:'Build and ship',items:[

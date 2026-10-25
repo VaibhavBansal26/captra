@@ -2,7 +2,7 @@ import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type Capabili
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}
-export type StreamMessage<Output=unknown>={event:'trace';data:CaptraEvent}|{event:'result';data:RemoteCapabilityResult<Output>}|{event:'error';data:{message:string}}
+export type StreamMessage<Output=unknown>={event:'trace';data:CaptraEvent}|{event:'result';data:RemoteCapabilityResult<Output>}|{event:'error';data:{message:string;code?:string;requestId?:string}}
 export class CaptraClientError extends Error{constructor(message:string,readonly status:number,readonly code?:string,readonly requestId?:string){super(message);this.name='CaptraClientError'}}
 
 export function createCaptraClient<App extends AgentApp=AgentApp>(options:CaptraClientOptions){
@@ -20,8 +20,8 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     cancel:(id:string)=>call(`/runs/${encodeURIComponent(id)}/cancel`,{method:'POST'}) as Promise<RunRecord>,
     usage:(groupBy:UsageGroupBy='capability',query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage?${usageParams({...query,groupBy})}`) as Promise<{groupBy:UsageGroupBy;items:UsageSummary[]}>,
     usageRecords:(query:Omit<UsageQuery,'tenantId'>&{scope?:'user'|'tenant'}={})=>call(`/usage/records?${usageParams(query)}`) as Promise<UsageRecord[]>,
-    async *stream<Name extends CapabilityName<App>>(capability:Name,input:CapabilityInput<App,Name>,idempotencyKey?:string):AsyncIterable<StreamMessage<CapabilityOutput<App,Name>>>{
-      const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/stream`,{method:'POST',headers:{'content-type':'application/json',accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},body:JSON.stringify({capability,input,idempotencyKey})})
+    async *stream<Name extends CapabilityName<App>>(capability:Name,input:CapabilityInput<App,Name>,idempotencyKey?:string,signal?:AbortSignal):AsyncIterable<StreamMessage<CapabilityOutput<App,Name>>>{
+      const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/stream`,{method:'POST',headers:{'content-type':'application/json',accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},body:JSON.stringify({capability,input,idempotencyKey}),signal})
       assertProtocol(response)
       if(!response.ok||!response.body)throw new CaptraClientError(`Captra stream failed: ${response.status}`,response.status,undefined,response.headers.get('x-request-id')??undefined)
       const reader=response.body.pipeThrough(new TextDecoderStream()).getReader();let buffer=''

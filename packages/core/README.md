@@ -2,6 +2,8 @@
 
 The typed contract and execution runtime behind Captra: capabilities, agents, tools, scoped memory, approvals, budgets, durable runs, cancellation, checkpoints, effect receipts, telemetry, replay, and evaluations.
 
+Use `chat()` for a streaming conversation that keeps those same guarantees. It emits `chat.delta` events, enforces token and cost reservations, records provider usage, supports scoped memory, and remains an ordinary discoverable Captra capability.
+
 `runtime.usage` records every model-provider attempt and can summarize cost, tokens, reliability, and latency by run, capability, user, tenant, provider, or model. Use `InMemoryUsageStore` locally and `PostgresUsageStore` for durable deployments.
 
 ```bash

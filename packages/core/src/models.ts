@@ -10,7 +10,8 @@ export type ModelRequest={messages:readonly ModelMessage[];tools?:readonly Model
 export type ModelUsage={inputTokens?:number;outputTokens?:number;cachedInputTokens?:number;reasoningTokens?:number;costUsd?:number}
 export type ModelAttempt={provider:string;attempt:number;status:'succeeded'|'failed'|'skipped';durationMs:number;retryable?:boolean;code?:string;model?:string;usage?:ModelUsage}
 export type ModelResponse={text:string;toolCalls?:readonly ModelToolCall[];usage?:ModelUsage;model?:string;provider?:string;attempts?:readonly ModelAttempt[];providerState?:unknown}
-export interface ModelAdapter { generate(request:ModelRequest):Promise<ModelResponse>; stream?(request:ModelRequest):AsyncIterable<string> }
+export type ModelStreamEvent={type:'text-delta';delta:string}|{type:'finish';response:ModelResponse}
+export interface ModelAdapter { generate(request:ModelRequest):Promise<ModelResponse>; stream?(request:ModelRequest):AsyncIterable<string|ModelStreamEvent> }
 export type ModelRecording={id:string;request:ModelRequest;response:ModelResponse;createdAt:number}
 export interface ModelRecordingStore{append(record:ModelRecording):Promise<void>;list():Promise<ModelRecording[]>}
 export class InMemoryModelRecordingStore implements ModelRecordingStore{readonly records:ModelRecording[]=[];async append(record:ModelRecording){this.records.push(structuredClone(record))}async list(){return structuredClone(this.records)}}
