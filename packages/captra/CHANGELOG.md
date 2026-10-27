@@ -1,5 +1,20 @@
 # captra
 
+## 0.19.0
+
+### Minor Changes
+
+- 94e59be: Add tenant-safe conversation lifecycle operations, HTTP and client methods, and bounded PostgreSQL retention cleanup.
+
+### Patch Changes
+
+- Updated dependencies [94e59be]
+  - @captra-ai/core@0.17.0
+  - @captra-ai/client@0.8.0
+  - @captra-ai/server@0.11.0
+  - @captra-ai/postgres@0.9.0
+  - @captra-ai/mcp@0.1.4
+
 ## 0.18.1
 
 ### Patch Changes

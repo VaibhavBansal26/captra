@@ -1,5 +1,11 @@
 # @captra-ai/core
 
+## 0.17.0
+
+### Minor Changes
+
+- 94e59be: Add tenant-safe conversation lifecycle operations, HTTP and client methods, and bounded PostgreSQL retention cleanup.
+
 ## 0.16.0
 
 ### Minor Changes

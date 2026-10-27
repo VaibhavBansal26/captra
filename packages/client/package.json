@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/client",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "description": "HTTP and streaming client for Captra runtimes.",
   "license": "MIT",
   "repository": {
