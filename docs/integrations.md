@@ -35,6 +35,8 @@ const runtime=createRuntime(app,{
 
 Conversation history is tenant-scoped, bound to its creating user, deduplicated by message ID, and read through backward cursor pages.
 
+Archive conversations before retention removes them. A scheduled maintenance worker can delete a bounded tenant batch with `conversations.purgeArchived(tenantId, cutoff, limit)`. User-facing lifecycle calls are available as `conversation()`, `archiveConversation()`, `restoreConversation()`, and `deleteConversation()` on the typed client.
+
 A model adapter should translate `ModelRequest.output` into its provider's native JSON Schema mode when available. The adapter must still return the textual JSON in `ModelResponse.text`; Captra owns normalization, Zod validation, bounded repair, and portable error semantics.
 
 ## Provider fallback

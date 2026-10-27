@@ -48,6 +48,21 @@ suite('PostgreSQL integration',()=>{
     expect(await conversations.list('c1',{...ada,tenantId:'other'})).toEqual({items:[],nextCursor:undefined})
   })
 
+  it('archives, restores, deletes, and purges conversations inside the owning tenant',async()=>{
+    const conversations=new PostgresConversationStore(client),owner={tenantId:'lifecycle',userId:'u1',projectId:'p1'}
+    await conversations.append('archived',owner,[{role:'user',content:'retain briefly'}])
+    expect((await conversations.archive('archived',owner)).status).toBe('archived')
+    await expect(conversations.append('archived',owner,[{role:'user',content:'blocked'}])).rejects.toThrow('archived')
+    expect((await conversations.restore('archived',owner)).status).toBe('active')
+    await conversations.archive('archived',owner)
+    await database.query(`UPDATE captra_conversations SET archived_at=now()-interval '2 days' WHERE tenant_id='lifecycle' AND id='archived'`)
+    expect(await conversations.purgeArchived('other',Date.now()-86_400_000)).toBe(0)
+    expect(await conversations.purgeArchived('lifecycle',Date.now()-86_400_000)).toBe(1)
+    expect(await conversations.get('archived',owner)).toBeUndefined()
+    await conversations.append('deleted',owner,[{role:'user',content:'delete me'}])
+    expect(await conversations.delete('deleted',owner)).toBe(true);expect(await conversations.delete('deleted',owner)).toBe(false)
+  })
+
   it('deduplicates and ranks semantic memory with pgvector',async()=>{
     const vectors:Record<string,number[]>={'Dark mode':[1,0,0],'Dark theme':[1,0,0],'Invoice reminders':[0,1,0]},memory=new PostgresSemanticMemoryStore(client,{embed:async texts=>texts.map(text=>vectors[text]??[0,0,1])},{dimensions:3,minSimilarity:.5,deduplicateSimilarity:.99})
     const first=await memory.remember({tenantId:'vector',scope:'user',ownerId:'u1',type:'preference',content:'Dark mode',confidence:1}),duplicate=await memory.remember({tenantId:'vector',scope:'user',ownerId:'u1',type:'preference',content:'Dark theme',confidence:1})

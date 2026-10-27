@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type ConversationMessage,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type Conversation,type ConversationMessage,type ConversationStatus,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
 import { hashStateKey,StateConflictError,StateLeaseError,validateCommit,validateLease,validateLeaseRequest,type AcquireLeaseOptions,type CommitOptions,type SharedStateAdapter,type SharedStateEvent,type SharedStateSnapshot,type StateKey,type StateLease } from '@captra-ai/state'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
@@ -19,6 +19,7 @@ type EffectRow={tenant_id:string;tool:string;key:string;status:EffectReceipt['st
 type UsageRow={id:string;run_id:string;tenant_id:string;user_id:string;project_id:string;capability:string;provider:string;model?:string;attempt:number;status:UsageRecord['status'];input_tokens:number|string;output_tokens:number|string;cached_input_tokens:number|string;reasoning_tokens:number|string;cost_usd:number|string;duration_ms:number|string;created_at:Date|string}
 type EvaluationRow={id:string;tenant_id:string;project_id?:string;suite?:string;variant?:string;report:EvaluationReport;created_at:Date|string}
 type ConversationMessageRow={sequence:number|string;tenant_id:string;conversation_id:string;id:string;user_id:string;role:ConversationMessage['role'];content:string;created_at:Date|string}
+type ConversationRow={tenant_id:string;id:string;user_id:string;status:ConversationStatus;created_at:Date|string;updated_at:Date|string;archived_at?:Date|string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,approvalIdentity:row.approval_identity,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
@@ -30,6 +31,7 @@ const stateEventFrom=(row:StateEventRow):SharedStateEvent=>({id:row.id,key:row.k
 const usageFrom=(row:UsageRow):UsageRecord=>({id:row.id,runId:row.run_id,tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,capability:row.capability,provider:row.provider,model:row.model,attempt:row.attempt,status:row.status,inputTokens:Number(row.input_tokens),outputTokens:Number(row.output_tokens),cachedInputTokens:Number(row.cached_input_tokens),reasoningTokens:Number(row.reasoning_tokens),tokens:Number(row.input_tokens)+Number(row.output_tokens),costUsd:Number(row.cost_usd),durationMs:Number(row.duration_ms),createdAt:millis(row.created_at)})
 const evaluationFrom=(row:EvaluationRow):StoredEvaluationReport=>({id:row.id,tenantId:row.tenant_id,projectId:row.project_id,report:row.report,createdAt:millis(row.created_at)})
 const conversationMessageFrom=(row:ConversationMessageRow):ConversationMessage=>({id:row.id,conversationId:row.conversation_id,tenantId:row.tenant_id,userId:row.user_id,role:row.role,content:row.content,createdAt:millis(row.created_at)})
+const conversationFrom=(row:ConversationRow):Conversation=>({id:row.id,tenantId:row.tenant_id,userId:row.user_id,status:row.status,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at),archivedAt:row.archived_at?millis(row.archived_at):undefined})
 
 export class PostgresConversationStore implements ConversationStore{
   constructor(readonly client:SqlClient){}
@@ -41,7 +43,7 @@ export class PostgresConversationStore implements ConversationStore{
     const result=await this.client.query<ConversationMessageRow>(`WITH owned AS (
       INSERT INTO captra_conversations (tenant_id,id,user_id) VALUES ($1,$2,$3)
       ON CONFLICT (tenant_id,id) DO UPDATE SET updated_at=now()
-      WHERE captra_conversations.user_id=EXCLUDED.user_id
+      WHERE captra_conversations.user_id=EXCLUDED.user_id AND captra_conversations.status='active'
       RETURNING tenant_id,id,user_id
     ), incoming AS (
       SELECT * FROM jsonb_to_recordset($4::jsonb) AS message(id text,role text,content text,created_at timestamptz)
@@ -52,8 +54,9 @@ export class PostgresConversationStore implements ConversationStore{
     ON CONFLICT (tenant_id,conversation_id,id) DO NOTHING
     RETURNING *`,[identity.tenantId,conversationId,identity.userId,JSON.stringify(rows.map(row=>({id:row.id,role:row.role,content:row.content,created_at:new Date(row.createdAt).toISOString()})))])
     if(!result.rows.length){
-      const owned=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+      const owned=await this.client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
       if(!owned.rows[0])throw new Error('Conversation not found')
+      if(owned.rows[0].status==='archived')throw new Error('Conversation is archived')
     }
     return result.rows.sort((left,right)=>Number(left.sequence)-Number(right.sequence)).map(conversationMessageFrom)
   }
@@ -73,6 +76,40 @@ export class PostgresConversationStore implements ConversationStore{
     }
     const hasMore=result.rows.length>limit,selected=result.rows.slice(0,limit).reverse().map(conversationMessageFrom)
     return {items:selected,nextCursor:hasMore?selected[0]?.id:undefined}
+  }
+
+  async get(conversationId:string,identity:ExecutionIdentity){
+    const result=await this.client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+    if(result.rows[0])return conversationFrom(result.rows[0])
+    if(await this.exists(identity.tenantId,conversationId))throw new Error('Conversation not found')
+    return undefined
+  }
+
+  async archive(conversationId:string,identity:ExecutionIdentity){return this.transition(conversationId,identity,'archived')}
+  async restore(conversationId:string,identity:ExecutionIdentity){return this.transition(conversationId,identity,'active')}
+  async delete(conversationId:string,identity:ExecutionIdentity){
+    const result=await this.client.query('DELETE FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+    if((result.rowCount??0)>0)return true
+    if(await this.exists(identity.tenantId,conversationId))throw new Error('Conversation not found')
+    return false
+  }
+
+  async purgeArchived(tenantId:string,before:number,limit=1_000){
+    if(!tenantId)throw new Error('Conversation retention requires tenantId')
+    if(!Number.isFinite(before))throw new Error('Conversation retention before must be finite')
+    if(!Number.isSafeInteger(limit)||limit<1||limit>10_000)throw new Error('Conversation retention limit must be between 1 and 10000')
+    const result=await this.client.query(`DELETE FROM captra_conversations WHERE ctid IN (
+      SELECT ctid FROM captra_conversations WHERE tenant_id=$1 AND status='archived' AND archived_at<to_timestamp($2/1000.0)
+      ORDER BY archived_at,id LIMIT $3 FOR UPDATE SKIP LOCKED
+    )`,[tenantId,before,limit])
+    return result.rowCount??0
+  }
+
+  private async transition(conversationId:string,identity:ExecutionIdentity,status:ConversationStatus){
+    const result=await this.client.query<ConversationRow>(`UPDATE captra_conversations SET status=$4,archived_at=CASE WHEN $4='archived' THEN now() ELSE NULL END,updated_at=now()
+      WHERE tenant_id=$1 AND id=$2 AND user_id=$3 RETURNING *`,[identity.tenantId,conversationId,identity.userId,status])
+    if(result.rows[0])return conversationFrom(result.rows[0])
+    throw new Error('Conversation not found')
   }
 
   private async exists(tenantId:string,conversationId:string){const result=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2',[tenantId,conversationId]);return Boolean(result.rows[0])}

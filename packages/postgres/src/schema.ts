@@ -28,12 +28,18 @@ CREATE TABLE IF NOT EXISTS captra_conversations (
   tenant_id text NOT NULL,
   id text NOT NULL,
   user_id text NOT NULL,
+  status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+  archived_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY (tenant_id,id)
 );
 CREATE INDEX IF NOT EXISTS captra_conversations_owner
   ON captra_conversations (tenant_id,user_id,updated_at DESC,id);
+ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
+ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+CREATE INDEX IF NOT EXISTS captra_conversations_retention
+  ON captra_conversations (tenant_id,archived_at,id) WHERE status='archived';
 
 CREATE TABLE IF NOT EXISTS captra_conversation_messages (
   sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -6,6 +6,8 @@ Use `chat()` for a streaming conversation that keeps those same guarantees. It e
 
 Set `durable:true` to persist message history through the runtime's tenant-safe `ConversationStore`. `InMemoryConversationStore` supports local development and cursor pagination; production adapters implement the same small interface.
 
+The conversation contract also exposes metadata lookup, archive, restore, and permanent delete operations. Archived conversations remain readable but reject new messages until restored.
+
 `runtime.usage` records every model-provider attempt and can summarize cost, tokens, reliability, and latency by run, capability, user, tenant, provider, or model. Use `InMemoryUsageStore` locally and `PostgresUsageStore` for durable deployments.
 
 ```bash

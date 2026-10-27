@@ -18,4 +18,6 @@ Capability names, inputs, and outputs are inferred from the server's app contrac
 
 `conversationMessages(id, { cursor, limit })` reads authenticated cursor pages for durable chat interfaces.
 
+Use `conversation(id)`, `archiveConversation(id)`, `restoreConversation(id)`, and `deleteConversation(id)` for the authenticated conversation lifecycle.
+
 [Client documentation](https://vaibhavbansal26.github.io/captra/reference/packages) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/client) · MIT

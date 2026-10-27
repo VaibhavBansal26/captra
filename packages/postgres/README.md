@@ -19,4 +19,17 @@ const runtime = createRuntime(app, {
 
 Conversation IDs are scoped by tenant and bound to the user who creates them. Message IDs are deduplicated and history uses stable backward cursor pagination. All durable memory, shared state, conversations, and effect receipts are tenant-scoped. Run migrations during deployment before starting workers.
 
+Conversation lifecycle operations are available through the store and authenticated HTTP client:
+
+```ts
+await runtime.conversations.archive(conversationId, identity)
+await runtime.conversations.restore(conversationId, identity)
+await runtime.conversations.delete(conversationId, identity)
+
+// Run from a scheduled maintenance worker, one tenant at a time.
+await conversations.purgeArchived(tenantId, Date.now() - 90 * 86_400_000, 1_000)
+```
+
+`purgeArchived()` deletes only archived conversations older than the cutoff, uses bounded batches, and relies on cascading foreign keys to remove their messages. Back up the database before changing retention policy, run `migrateCaptra()` as a deployment migration, and monitor deleted row counts. PostgreSQL point-in-time recovery or regular `pg_dump` backups should cover the Captra schema; test restoration before enabling automated retention.
+
 [PostgreSQL documentation](https://vaibhavbansal26.github.io/captra/integrations) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/postgres) · MIT

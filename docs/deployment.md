@@ -29,6 +29,8 @@ Background workers claim expiring queue leases. Checkpoints allow a replacement 
 - Apply request-size and execution budgets
 - Use durable conversation, run, checkpoint, and queue stores
 - Run PostgreSQL migrations before traffic shifts
+- Back up and restore-test the Captra schema before enabling archived-conversation retention
+- Run retention in bounded, tenant-scoped maintenance batches and monitor deleted row counts
 - Export telemetry and alert on failures and lease conflicts
 - Log original server failures through `onError` with their request IDs
 - Test cancellation and worker recovery
