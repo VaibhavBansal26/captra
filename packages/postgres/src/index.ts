@@ -1,10 +1,12 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type Conversation,type ConversationMessage,type ConversationStatus,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type Conversation,type ConversationMessage,type ConversationStatus,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunCompletionResult,type RunCompletionStore,type RunCompletionWrite,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
 import { hashStateKey,StateConflictError,StateLeaseError,validateCommit,validateLease,validateLeaseRequest,type AcquireLeaseOptions,type CommitOptions,type SharedStateAdapter,type SharedStateEvent,type SharedStateSnapshot,type StateKey,type StateLease } from '@captra-ai/state'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
 export { postgresSchema,postgresVectorSchema }
 export type SqlResult<Row=Record<string,unknown>>={rows:Row[];rowCount?:number|null}
 export interface SqlClient { query<Row=Record<string,unknown>>(text:string,values?:readonly unknown[]):Promise<SqlResult<Row>> }
+export interface SqlConnection extends SqlClient{release():void}
+export interface SqlPool extends SqlClient{connect():Promise<SqlConnection>}
 export async function migrateCaptra(client:SqlClient){await client.query(postgresSchema)}
 export async function migrateCaptraVectors(client:SqlClient,dimensions:number){await client.query(postgresVectorSchema(dimensions))}
 
@@ -126,6 +128,33 @@ export class PostgresRunStore implements RunStore{
   async findByIdempotencyKey(tenantId:string,key:string){const result=await this.client.query<RunRow>('SELECT * FROM captra_runs WHERE tenant_id=$1 AND idempotency_key=$2 LIMIT 1',[tenantId,key]);return result.rows[0]?runFrom(result.rows[0]):undefined}
 }
 
+/** Atomically publishes staged chat messages and usage with the terminal run and completion event. */
+export class PostgresRunCompletionStore implements RunCompletionStore{
+  constructor(readonly pool:SqlPool){}
+
+  async commit(write:RunCompletionWrite):Promise<RunCompletionResult>{
+    const client=await this.pool.connect()
+    try{
+      await client.query('BEGIN')
+      const locked=await client.query<RunRow>('SELECT * FROM captra_runs WHERE id=$1 FOR UPDATE',[write.runId]),current=locked.rows[0]
+      if(!current)throw new Error(`Unknown run: ${write.runId}`)
+      if(current.status!=='running')throw new Error(`Run ${write.runId} is no longer running`)
+      for(const item of write.conversations)await appendConversation(client,item.conversationId,item.identity,item.messages)
+      for(const item of write.usage)await insertUsage(client,item)
+      const updated=await client.query<RunRow>(`UPDATE captra_runs SET status='completed',output=$2::jsonb,error=NULL,updated_at=now() WHERE id=$1 AND status='running' RETURNING *`,[write.runId,JSON.stringify(write.output)])
+      if(!updated.rows[0])throw new Error(`Run ${write.runId} is no longer running`)
+      const saved=await client.query<EventRow>(`INSERT INTO captra_events (id,run_id,sequence,protocol,type,capability,detail,data)
+        SELECT $1,$2,COALESCE(MAX(events.sequence),0)+1,$3,'run.completed',$4,$5,$6::jsonb
+        FROM captra_runs runs LEFT JOIN captra_events events ON events.run_id=runs.id WHERE runs.id=$2 GROUP BY runs.id RETURNING *`,[crypto.randomUUID(),write.runId,CAPTRA_PROTOCOL_VERSION,write.capability,write.view,JSON.stringify({view:write.view})])
+      await client.query('COMMIT')
+      return {run:runFrom(updated.rows[0]),event:eventFrom(saved.rows[0])}
+    }catch(error){
+      try{await client.query('ROLLBACK')}catch{}
+      throw error
+    }finally{client.release()}
+  }
+}
+
 export class PostgresEffectStore implements EffectStore{
   constructor(readonly client:SqlClient){}
   async claim(tenantId:string,tool:string,key:string):Promise<EffectClaim>{const inserted=await this.client.query<EffectRow>(`INSERT INTO captra_effects (tenant_id,tool,key,status) VALUES ($1,$2,$3,'started') ON CONFLICT DO NOTHING RETURNING *`,[tenantId,tool,key]);if(inserted.rows[0])return {status:'claimed'};const found=await this.client.query<EffectRow>('SELECT * FROM captra_effects WHERE tenant_id=$1 AND tool=$2 AND key=$3',[tenantId,tool,key]),receipt=effectFrom(found.rows[0]);if(receipt.status==='completed')return {status:'completed',output:receipt.output};return {status:'in_doubt',receipt}}
@@ -138,6 +167,25 @@ export class PostgresUsageStore implements UsageStore{
   async record(input:UsageInput){const result=await this.client.query<UsageRow>(`INSERT INTO captra_usage (id,run_id,tenant_id,user_id,project_id,capability,provider,model,attempt,status,input_tokens,output_tokens,cached_input_tokens,reasoning_tokens,cost_usd,duration_ms,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,to_timestamp($17/1000.0)) ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id RETURNING *`,[input.id??crypto.randomUUID(),input.runId,input.tenantId,input.userId,input.projectId,input.capability,input.provider,input.model??null,input.attempt,input.status,input.inputTokens,input.outputTokens,input.cachedInputTokens,input.reasoningTokens,input.costUsd,input.durationMs,input.createdAt??Date.now()]);return usageFrom(result.rows[0])}
   async query(query:UsageQuery){const {where,values}=usageFilter(query);values.push(Math.min(query.limit??1000,10_000));const result=await this.client.query<UsageRow>(`SELECT * FROM captra_usage WHERE ${where} ORDER BY created_at DESC,id LIMIT $${values.length}`,values);return result.rows.map(usageFrom)}
   async summarize(query:UsageQuery,groupBy:UsageGroupBy){const columns:Record<UsageGroupBy,string>={run:'run_id',capability:'capability',user:'user_id',tenant:'tenant_id',provider:'provider',model:"COALESCE(model,'unknown')"},column=columns[groupBy],{where,values}=usageFilter(query),result=await this.client.query<{key:string;calls:number|string;succeeded:number|string;failed:number|string;skipped:number|string;input_tokens:number|string;output_tokens:number|string;cached_input_tokens:number|string;reasoning_tokens:number|string;tokens:number|string;cost_usd:number|string;duration_ms:number|string}>(`SELECT ${column} AS key,COUNT(*) AS calls,COUNT(*) FILTER (WHERE status='succeeded') AS succeeded,COUNT(*) FILTER (WHERE status='failed') AS failed,COUNT(*) FILTER (WHERE status='skipped') AS skipped,COALESCE(SUM(input_tokens),0) AS input_tokens,COALESCE(SUM(output_tokens),0) AS output_tokens,COALESCE(SUM(cached_input_tokens),0) AS cached_input_tokens,COALESCE(SUM(reasoning_tokens),0) AS reasoning_tokens,COALESCE(SUM(input_tokens+output_tokens),0) AS tokens,COALESCE(SUM(cost_usd),0) AS cost_usd,COALESCE(SUM(duration_ms),0) AS duration_ms FROM captra_usage WHERE ${where} GROUP BY ${column} ORDER BY cost_usd DESC,tokens DESC`,values);return result.rows.map(row=>({key:row.key,calls:Number(row.calls),succeeded:Number(row.succeeded),failed:Number(row.failed),skipped:Number(row.skipped),inputTokens:Number(row.input_tokens),outputTokens:Number(row.output_tokens),cachedInputTokens:Number(row.cached_input_tokens),reasoningTokens:Number(row.reasoning_tokens),tokens:Number(row.tokens),costUsd:Number(row.cost_usd),durationMs:Number(row.duration_ms)} satisfies UsageSummary))}
+}
+
+async function insertUsage(client:SqlClient,input:UsageInput){return client.query<UsageRow>(`INSERT INTO captra_usage (id,run_id,tenant_id,user_id,project_id,capability,provider,model,attempt,status,input_tokens,output_tokens,cached_input_tokens,reasoning_tokens,cost_usd,duration_ms,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,to_timestamp($17/1000.0)) ON CONFLICT (id) DO UPDATE SET id=EXCLUDED.id RETURNING *`,[input.id??crypto.randomUUID(),input.runId,input.tenantId,input.userId,input.projectId,input.capability,input.provider,input.model??null,input.attempt,input.status,input.inputTokens,input.outputTokens,input.cachedInputTokens,input.reasoningTokens,input.costUsd,input.durationMs,input.createdAt??Date.now()])}
+
+async function appendConversation(client:SqlClient,conversationId:string,identity:ExecutionIdentity,messages:readonly ChatMessage[]){
+  const rows=messages.map((message,index)=>({id:message.id??crypto.randomUUID(),role:message.role,content:message.content,created_at:new Date(Date.now()+index).toISOString()}))
+  const result=await client.query<ConversationMessageRow>(`WITH owned AS (
+    INSERT INTO captra_conversations (tenant_id,id,user_id) VALUES ($1,$2,$3)
+    ON CONFLICT (tenant_id,id) DO UPDATE SET updated_at=now()
+    WHERE captra_conversations.user_id=EXCLUDED.user_id AND captra_conversations.status='active'
+    RETURNING tenant_id,id,user_id
+  ), incoming AS (SELECT * FROM jsonb_to_recordset($4::jsonb) AS message(id text,role text,content text,created_at timestamptz))
+  INSERT INTO captra_conversation_messages (tenant_id,conversation_id,id,user_id,role,content,created_at)
+  SELECT owned.tenant_id,owned.id,incoming.id,owned.user_id,incoming.role,incoming.content,incoming.created_at FROM owned CROSS JOIN incoming
+  ON CONFLICT (tenant_id,conversation_id,id) DO NOTHING RETURNING *`,[identity.tenantId,conversationId,identity.userId,JSON.stringify(rows)])
+  if(result.rows.length===messages.length)return
+  const owned=await client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+  if(!owned.rows[0])throw new Error('Conversation not found')
+  if(owned.rows[0].status==='archived')throw new Error('Conversation is archived')
 }
 
 export class PostgresEvaluationStore implements EvaluationStore{

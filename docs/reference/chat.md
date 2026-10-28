@@ -49,7 +49,7 @@ const chat = useChat(client, 'support.chat', {
 await chat.loadMore()
 ```
 
-`loadMore()` prepends the next cursor page without duplicating message IDs. If no conversation ID is supplied, the first completed response returns the generated ID. The built-in store is for local development; production deployments should provide a durable `ConversationStore` implementation through `createRuntime({ conversations })`.
+`loadMore()` prepends the next cursor page without duplicating message IDs. If no conversation ID is supplied, the first completed response returns the generated ID. The built-in store is for local development. Production deployments should configure `PostgresConversationStore`, `PostgresRunStore`, and `PostgresRunCompletionStore`; the completion store atomically publishes the assistant message, usage record, completion event, and terminal run state.
 
 Use `reconnect(runId)` after a reload or transport interruption. The hook reloads durable events, continues polling the run, deduplicates event IDs, and restores the final assistant message. `stop()` aborts the browser stream and cancels the active server run when its run ID is known.
 

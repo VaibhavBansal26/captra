@@ -30,10 +30,14 @@ For durable chat, configure `PostgresConversationStore` after applying `migrateC
 ```ts
 const runtime=createRuntime(app,{
   conversations:new PostgresConversationStore(pool),
+  runs:new PostgresRunStore(pool),
+  completion:new PostgresRunCompletionStore(pool),
 })
 ```
 
 Conversation history is tenant-scoped, bound to its creating user, deduplicated by message ID, and read through backward cursor pages.
+
+`PostgresRunCompletionStore` is the production transaction boundary for chat completion. It commits staged assistant messages and model usage together with the terminal run state and `run.completed` event. If any write fails, the run cannot become `completed`. If the database commits but the worker loses the response, the runtime reads the terminal run and returns the already-committed result instead of replaying the completion. User messages are persisted before inference so an interrupted request remains recoverable and auditable; budget reservations remain governed by the configured `BudgetAdapter` because external or distributed budget ledgers may not share the PostgreSQL transaction.
 
 Archive conversations before retention removes them. A scheduled maintenance worker can delete a bounded tenant batch with `conversations.purgeArchived(tenantId, cutoff, limit)`. User-facing lifecycle calls are available as `conversation()`, `archiveConversation()`, `restoreConversation()`, and `deleteConversation()` on the typed client.
 

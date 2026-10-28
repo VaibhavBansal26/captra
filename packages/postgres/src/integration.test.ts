@@ -1,7 +1,7 @@
 import { afterAll,beforeAll,describe,expect,it } from 'vitest'
 import { Pool } from 'pg'
 import { StateConflictError,StateLeaseError } from '@captra-ai/state'
-import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresConversationStore,PostgresMemoryStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresSharedStateAdapter,PostgresWorkQueue,type SqlClient } from './index.js'
+import { migrateCaptra,migrateCaptraVectors,PostgresCheckpointStore,PostgresConversationStore,PostgresMemoryStore,PostgresRunCompletionStore,PostgresRunStore,PostgresSemanticMemoryStore,PostgresSharedStateAdapter,PostgresWorkQueue,type SqlClient } from './index.js'
 
 const connectionString=process.env.CAPTRA_POSTGRES_URL
 const suite=connectionString?describe:describe.skip
@@ -61,6 +61,14 @@ suite('PostgreSQL integration',()=>{
     expect(await conversations.get('archived',owner)).toBeUndefined()
     await conversations.append('deleted',owner,[{role:'user',content:'delete me'}])
     expect(await conversations.delete('deleted',owner)).toBe(true);expect(await conversations.delete('deleted',owner)).toBe(false)
+  })
+
+  it('atomically commits assistant messages, usage, completion events, and terminal state',async()=>{
+    const identity={tenantId:'atomic',userId:'u1',projectId:'p1'},runs=new PostgresRunStore(client),conversations=new PostgresConversationStore(client),completion=new PostgresRunCompletionStore(database)
+    const run=await runs.create({app:'Test',appVersion:'1.0.0',capability:'chat',input:{},identity});await runs.update(run.id,{status:'running'});await conversations.append('c1',identity,[{id:'user-1',role:'user',content:'hello'}]);await conversations.archive('c1',identity)
+    const write={runId:run.id,capability:'chat',view:'ChatMessage',output:{message:{id:`${run.id}:assistant`,role:'assistant',content:'answer'},conversationId:'c1'},conversations:[{conversationId:'c1',identity,messages:[{id:`${run.id}:assistant`,role:'assistant' as const,content:'answer'}]}],usage:[{id:`${run.id}:chat:1`,runId:run.id,tenantId:identity.tenantId,userId:identity.userId,projectId:identity.projectId,capability:'chat',provider:'test',attempt:1,status:'succeeded' as const,inputTokens:4,outputTokens:2,cachedInputTokens:0,reasoningTokens:0,costUsd:.01,durationMs:5}]}
+    await expect(completion.commit(write)).rejects.toThrow('archived');expect((await runs.get(run.id))?.status).toBe('running');expect(await database.query('SELECT 1 FROM captra_usage WHERE run_id=$1',[run.id])).toMatchObject({rowCount:0});expect((await runs.events(run.id)).filter(event=>event.type==='run.completed')).toHaveLength(0)
+    await conversations.restore('c1',identity);const committed=await completion.commit(write);expect(committed.run.status).toBe('completed');expect(committed.event.type).toBe('run.completed');expect((await conversations.list('c1',identity)).items.map(item=>item.id)).toContain(`${run.id}:assistant`);expect(await database.query('SELECT 1 FROM captra_usage WHERE run_id=$1',[run.id])).toMatchObject({rowCount:1})
   })
 
   it('deduplicates and ranks semantic memory with pgvector',async()=>{

@@ -7,15 +7,18 @@ npm install @captra-ai/postgres @captra-ai/core @captra-ai/state pg
 ```
 
 ```ts
-import { migrateCaptra, PostgresConversationStore, PostgresRunStore, PostgresCheckpointStore } from '@captra-ai/postgres'
+import { migrateCaptra, PostgresConversationStore, PostgresRunCompletionStore, PostgresRunStore, PostgresCheckpointStore } from '@captra-ai/postgres'
 
 await migrateCaptra(pool)
 const runtime = createRuntime(app, {
   conversations: new PostgresConversationStore(pool),
   runs: new PostgresRunStore(pool),
+  completion: new PostgresRunCompletionStore(pool),
   checkpoints: new PostgresCheckpointStore(pool),
 })
 ```
+
+Always configure `PostgresRunCompletionStore` with durable chat. It uses one checked-out connection and one transaction to publish the assistant message, usage record, `run.completed` event, and terminal run state. A failed write rolls the entire completion back, while deterministic message and usage IDs make an uncertain post-commit retry safe.
 
 Conversation IDs are scoped by tenant and bound to the user who creates them. Message IDs are deduplicated and history uses stable backward cursor pagination. All durable memory, shared state, conversations, and effect receipts are tenant-scoped. Run migrations during deployment before starting workers.
 
