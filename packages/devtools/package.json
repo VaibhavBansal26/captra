@@ -1,6 +1,5 @@
 {
   "name": "@captra-ai/devtools",
-  "private": true,
   "version": "0.8.0",
   "description": "Inspectable run, event, checkpoint, memory, state, and model traces for Captra.",
   "license": "MIT",
