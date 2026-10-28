@@ -15,11 +15,11 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Prevent `completed` when the assistant message cannot be persisted.
   - [x] Make completion replay-safe with message and effect idempotency keys.
   - [x] Add crash-before-write and crash-after-write recovery tests.
-- [ ] Add conversation lifecycle metadata.
-  - [ ] Add title, created/updated timestamps, status, owner, and optional labels.
-  - [ ] Add list, rename, archive, restore, and delete APIs.
-  - [ ] Define ownership transfer and shared-conversation authorization policies.
-  - [ ] Add client methods, React hooks, and Devtools views.
+- [x] Add conversation lifecycle metadata.
+  - [x] Add title, created/updated timestamps, status, owner, and optional labels.
+  - [x] Add list, rename, archive, restore, and delete APIs.
+  - [x] Define ownership transfer and shared-conversation authorization policies.
+  - [x] Add client methods, React hooks, and Devtools views.
 - [ ] Add history compaction and summarization.
   - [ ] Define token-aware selection and compaction thresholds.
   - [ ] Store summaries separately from original messages.
