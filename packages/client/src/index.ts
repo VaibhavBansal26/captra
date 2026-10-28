@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type Conversation, type ConversationPage, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type Conversation, type ConversationListPage, type ConversationMember, type ConversationPage, type ConversationStatus, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}
@@ -15,10 +15,16 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     run:(id:string)=>call(`/runs/${encodeURIComponent(id)}`) as Promise<RunRecord>,
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
     conversationMessages:(id:string,options:{cursor?:string;limit?:number}={})=>call(`/conversations/${encodeURIComponent(id)}/messages?${usageParams(options)}`) as Promise<ConversationPage>,
+    conversations:(options:{cursor?:string;limit?:number;status?:ConversationStatus}={})=>call(`/conversations?${usageParams(options)}`) as Promise<ConversationListPage>,
     conversation:(id:string)=>call(`/conversations/${encodeURIComponent(id)}`) as Promise<Conversation>,
+    updateConversation:(id:string,patch:{title?:string|null;labels?:readonly string[]})=>call(`/conversations/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(patch)}) as Promise<Conversation>,
     archiveConversation:(id:string)=>call(`/conversations/${encodeURIComponent(id)}/archive`,{method:'POST'}) as Promise<Conversation>,
     restoreConversation:(id:string)=>call(`/conversations/${encodeURIComponent(id)}/restore`,{method:'POST'}) as Promise<Conversation>,
     deleteConversation:(id:string)=>call(`/conversations/${encodeURIComponent(id)}`,{method:'DELETE'}).then(()=>undefined) as Promise<void>,
+    conversationMembers:(id:string)=>call(`/conversations/${encodeURIComponent(id)}/members`) as Promise<ConversationMember[]>,
+    shareConversation:(id:string,userId:string,role:'editor'|'viewer')=>call(`/conversations/${encodeURIComponent(id)}/members`,{method:'POST',body:JSON.stringify({userId,role})}) as Promise<ConversationMember>,
+    unshareConversation:(id:string,userId:string)=>call(`/conversations/${encodeURIComponent(id)}/members/${encodeURIComponent(userId)}`,{method:'DELETE'}).then(()=>undefined) as Promise<void>,
+    transferConversation:(id:string,userId:string)=>call(`/conversations/${encodeURIComponent(id)}/transfer`,{method:'POST',body:JSON.stringify({userId})}) as Promise<Conversation>,
     replay:(id:string)=>call(`/runs/${encodeURIComponent(id)}/replay`) as Promise<{run:RunRecord;events:CaptraEvent[];checkpoints:Array<{id:string;runId:string;key:string;sequence:number;state:unknown;createdAt:number}>}>,
     approve:(id:string)=>call(`/runs/${encodeURIComponent(id)}/approve`,{method:'POST'}) as Promise<RemoteCapabilityResult>,
     async *approveStream(id:string,signal?:AbortSignal):AsyncIterable<StreamMessage>{const response=await request(`${options.baseUrl.replace(/\/$/,'')}/runs/${encodeURIComponent(id)}/approve/stream`,{method:'POST',headers:{accept:'text/event-stream','captra-protocol':CAPTRA_PROTOCOL_VERSION,...options.headers},signal});yield* readStream(response)},

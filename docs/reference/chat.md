@@ -61,6 +61,27 @@ Approval-required chat capabilities pause like every other Captra capability. Th
 
 Approval continuation uses a streaming endpoint, so model tokens and run events continue appearing after the independent approver accepts the run. `<CaptraChat>` renders the approval panel automatically.
 
+## Conversation lifecycle
+
+Durable conversations include an optional title, labels, active or archived status, owner, access role, and created/updated timestamps. List and manage them through the typed client:
+
+```ts
+const page = await client.conversations({ status: 'active', limit: 30 })
+await client.updateConversation(id, { title: 'Launch plan', labels: ['priority'] })
+await client.archiveConversation(id)
+await client.restoreConversation(id)
+```
+
+React applications can use `useConversations(client)` for pagination, refresh, metadata updates, archive/restore, and deletion. `<CaptraConversations>` in Devtools renders the same metadata for operators.
+
+Collaboration is explicit and tenant-scoped. Owners may share, revoke access, transfer ownership, archive, restore, and delete. Editors may read messages, append messages, and change metadata. Viewers are read-only. Shared users cannot discover a conversation until the owner grants access, and ownership transfer makes the previous owner an editor so access is not accidentally lost.
+
+```ts
+await client.shareConversation(id, 'user-2', 'editor')
+await client.transferConversation(id, 'user-2')
+await client.unshareConversation(id, 'user-3')
+```
+
 ## Customize the component
 
 `<CaptraChat>` is accessible and unstyled. Use its stable `data-captra` and `data-role` attributes from CSS, or provide `renderMessage`, `empty`, `footer`, labels, and a class name. The component owns only presentation and composer state; the hook remains the source of truth for execution state.

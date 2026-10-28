@@ -33,6 +33,8 @@ await runtime.conversations.delete(conversationId, identity)
 await conversations.purgeArchived(tenantId, Date.now() - 90 * 86_400_000, 1_000)
 ```
 
+Conversations also support titles, labels, owner/editor/viewer roles, listing, and ownership transfer. Owners control sharing, lifecycle state, transfer, and deletion; editors can append and update metadata; viewers have read-only access. `migrateCaptra()` adds the metadata columns and tenant-scoped membership table safely to existing installations.
+
 `purgeArchived()` deletes only archived conversations older than the cutoff, uses bounded batches, and relies on cascading foreign keys to remove their messages. Back up the database before changing retention policy, run `migrateCaptra()` as a deployment migration, and monitor deleted row counts. PostgreSQL point-in-time recovery or regular `pg_dump` backups should cover the Captra schema; test restoration before enabling automated retention.
 
 [PostgreSQL documentation](https://vaibhavbansal26.github.io/captra/integrations) · [GitHub](https://github.com/VaibhavBansal26/captra/tree/main/packages/postgres) · MIT

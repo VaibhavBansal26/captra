@@ -1,5 +1,5 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type FormEvent, type ReactNode } from 'react'
-import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ChatMessage, type ChatOutput, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra-ai/core'
+import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ChatMessage, type ChatOutput, type Conversation, type ConversationStatus, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra-ai/core'
 import type { CaptraClient } from '@captra-ai/client'
 import { createState, hashStateKey, type CaptraState, type StateKey } from '@captra-ai/state'
 
@@ -19,7 +19,7 @@ export function useOptimisticState<T=unknown>(key:StateKey,options:{state?:Captr
 export type UseCaptraOptions=RuntimeOptions&{identity?:ExecutionIdentity;approverIdentity?:ExecutionIdentity;state?:CaptraState;approve?:(result:CapabilityResult)=>Promise<boolean>}
 export function useAgentApp(app: AgentApp, options:UseCaptraOptions={}) {
   const inherited=useContext(StateContext),state=options.state??inherited
-  const runtime = useMemo(() => createRuntime(app, options), [app, options.memory, options.conversations, options.runs, options.budgets, options.effects, options.authorize, options.authorizeApproval, options.signal])
+  const runtime = useMemo(() => createRuntime(app, options), [app, options.memory, options.conversations, options.runs, options.completion, options.checkpoints, options.budgets, options.effects, options.usage, options.telemetry, options.authorize, options.authorizeApproval, options.signal])
   const [result, setResult] = useState<CapabilityResult | null>(null)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -66,6 +66,17 @@ export function useRemoteCapability<App extends AgentApp,Name extends Capability
   return {run,stream,approve,reject,cancel,refreshEvents,reset,result,events,pending,error}
 }
 
+export function useConversations<App extends AgentApp>(client:CaptraClient<App>,options:{status?:ConversationStatus;pageSize?:number}={}){
+  const [items,setItems]=useState<Conversation[]>([]),[cursor,setCursor]=useState<string|undefined>(),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null)
+  const load=useCallback(async(reset=false)=>{if(pending)return null;setPending(true);setError(null);try{const page=await client.conversations({cursor:reset?undefined:cursor,limit:options.pageSize??30,status:options.status});setItems(current=>reset?page.items:mergeConversations(current,page.items));setCursor(page.nextCursor);return page}catch(caught){setError(caught instanceof Error?caught.message:'Unable to load conversations');return null}finally{setPending(false)}},[client,cursor,options.pageSize,options.status,pending])
+  const refresh=useCallback(()=>load(true),[load])
+  const update=useCallback(async(id:string,patch:{title?:string|null;labels?:readonly string[]})=>{const value=await client.updateConversation(id,patch);setItems(current=>current.map(item=>item.id===id?value:item));return value},[client])
+  const archive=useCallback(async(id:string)=>{const value=await client.archiveConversation(id);setItems(current=>options.status==='active'?current.filter(item=>item.id!==id):current.map(item=>item.id===id?value:item));return value},[client,options.status])
+  const restore=useCallback(async(id:string)=>{const value=await client.restoreConversation(id);setItems(current=>options.status==='archived'?current.filter(item=>item.id!==id):current.map(item=>item.id===id?value:item));return value},[client,options.status])
+  const remove=useCallback(async(id:string)=>{await client.deleteConversation(id);setItems(current=>current.filter(item=>item.id!==id))},[client])
+  return {items,loadMore:()=>load(false),refresh,update,archive,restore,remove,pending,error,hasMore:Boolean(cursor)}
+}
+
 export type UseChatOptions={conversationId?:string;durable?:boolean;pageSize?:number;initialMessages?:readonly ChatMessage[];idempotencyKey?:()=>string;reconnectIntervalMs?:number}
 export function useChat<App extends AgentApp,Name extends CapabilityName<App>>(client:CaptraClient<App>,capability:Name,options:UseChatOptions={}){
   const [messages,setMessages]=useState<ChatMessage[]>([...(options.initialMessages??[])]),[events,setEvents]=useState<CaptraEvent[]>([]),[result,setResult]=useState<RemoteCapabilityResult<ChatOutput>|null>(null),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null),[draft,setDraft]=useState(''),[conversationId,setConversationId]=useState(options.conversationId),[cursor,setCursor]=useState<string|undefined>(),[hasMore,setHasMore]=useState(Boolean(options.conversationId))
@@ -106,6 +117,7 @@ export function CaptraChat({chat,className,placeholder='Message Captra…',sendL
 
 function mergeEvents(current:readonly CaptraEvent[],incoming:readonly CaptraEvent[]){const ids=new Set(current.map(event=>event.id));return [...current,...incoming.filter(event=>!ids.has(event.id))]}
 function mergeMessages(older:readonly ChatMessage[],current:readonly ChatMessage[]){const ids=new Set(current.map(message=>message.id).filter(Boolean));return [...older.filter(message=>!message.id||!ids.has(message.id)),...current]}
+function mergeConversations(current:readonly Conversation[],incoming:readonly Conversation[]){const ids=new Set(current.map(item=>item.id));return [...current,...incoming.filter(item=>!ids.has(item.id))]}
 function wait(milliseconds:number,signal:AbortSignal){return new Promise<void>((resolve,reject)=>{const timer=setTimeout(resolve,milliseconds),abort=()=>{clearTimeout(timer);reject(signal.reason??new DOMException('Aborted','AbortError'))};if(signal.aborted)abort();else signal.addEventListener('abort',abort,{once:true})})}
 
 export const useCaptra = useAgentApp

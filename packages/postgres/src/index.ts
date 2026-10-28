@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type Conversation,type ConversationMessage,type ConversationStatus,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunCompletionResult,type RunCompletionStore,type RunCompletionWrite,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION,type CaptraEvent,type ChatMessage,type CheckpointRecord,type CheckpointStore,type Conversation,type ConversationMember,type ConversationMessage,type ConversationRole,type ConversationStatus,type ConversationStore,type CreateRun,type EffectClaim,type EffectReceipt,type EffectStore,type EmbeddingAdapter,type EvaluationHistoryQuery,type EvaluationReport,type EvaluationStore,type ExecutionIdentity,type MemoryAdapter,type MemoryIdentity,type MemoryRecallOptions,type MemoryRecord,type MemoryScope,type RunCompletionResult,type RunCompletionStore,type RunCompletionWrite,type RunRecord,type RunStore,type StoredEvaluationReport,type UsageGroupBy,type UsageInput,type UsageQuery,type UsageRecord,type UsageStore,type UsageSummary,type WorkItem,type WorkQueue } from '@captra-ai/core'
 import { hashStateKey,StateConflictError,StateLeaseError,validateCommit,validateLease,validateLeaseRequest,type AcquireLeaseOptions,type CommitOptions,type SharedStateAdapter,type SharedStateEvent,type SharedStateSnapshot,type StateKey,type StateLease } from '@captra-ai/state'
 import { postgresSchema,postgresVectorSchema } from './schema.js'
 
@@ -21,7 +21,8 @@ type EffectRow={tenant_id:string;tool:string;key:string;status:EffectReceipt['st
 type UsageRow={id:string;run_id:string;tenant_id:string;user_id:string;project_id:string;capability:string;provider:string;model?:string;attempt:number;status:UsageRecord['status'];input_tokens:number|string;output_tokens:number|string;cached_input_tokens:number|string;reasoning_tokens:number|string;cost_usd:number|string;duration_ms:number|string;created_at:Date|string}
 type EvaluationRow={id:string;tenant_id:string;project_id?:string;suite?:string;variant?:string;report:EvaluationReport;created_at:Date|string}
 type ConversationMessageRow={sequence:number|string;tenant_id:string;conversation_id:string;id:string;user_id:string;role:ConversationMessage['role'];content:string;created_at:Date|string}
-type ConversationRow={tenant_id:string;id:string;user_id:string;status:ConversationStatus;created_at:Date|string;updated_at:Date|string;archived_at?:Date|string}
+type ConversationRow={tenant_id:string;id:string;user_id:string;status:ConversationStatus;title?:string;labels?:string[];access?:ConversationRole;created_at:Date|string;updated_at:Date|string;archived_at?:Date|string}
+type ConversationMemberRow={user_id:string;role:ConversationMember['role'];created_at:Date|string}
 const millis=(value:Date|string)=>new Date(value).getTime()
 const runFrom=(row:RunRow):RunRecord=>({id:row.id,app:row.app,appVersion:row.app_version,capability:row.capability,status:row.status,identity:{tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,sessionId:row.session_id},input:row.input,validatedInput:row.validated_input,output:row.output,approval:row.approval,approvalIdentity:row.approval_identity,error:row.error,idempotencyKey:row.idempotency_key,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at)})
 const eventFrom=(row:EventRow):CaptraEvent=>({id:row.id,runId:row.run_id,sequence:row.sequence,protocol:CAPTRA_PROTOCOL_VERSION,at:millis(row.at),type:row.type,capability:row.capability,detail:row.detail,data:row.data})
@@ -33,7 +34,8 @@ const stateEventFrom=(row:StateEventRow):SharedStateEvent=>({id:row.id,key:row.k
 const usageFrom=(row:UsageRow):UsageRecord=>({id:row.id,runId:row.run_id,tenantId:row.tenant_id,userId:row.user_id,projectId:row.project_id,capability:row.capability,provider:row.provider,model:row.model,attempt:row.attempt,status:row.status,inputTokens:Number(row.input_tokens),outputTokens:Number(row.output_tokens),cachedInputTokens:Number(row.cached_input_tokens),reasoningTokens:Number(row.reasoning_tokens),tokens:Number(row.input_tokens)+Number(row.output_tokens),costUsd:Number(row.cost_usd),durationMs:Number(row.duration_ms),createdAt:millis(row.created_at)})
 const evaluationFrom=(row:EvaluationRow):StoredEvaluationReport=>({id:row.id,tenantId:row.tenant_id,projectId:row.project_id,report:row.report,createdAt:millis(row.created_at)})
 const conversationMessageFrom=(row:ConversationMessageRow):ConversationMessage=>({id:row.id,conversationId:row.conversation_id,tenantId:row.tenant_id,userId:row.user_id,role:row.role,content:row.content,createdAt:millis(row.created_at)})
-const conversationFrom=(row:ConversationRow):Conversation=>({id:row.id,tenantId:row.tenant_id,userId:row.user_id,status:row.status,createdAt:millis(row.created_at),updatedAt:millis(row.updated_at),archivedAt:row.archived_at?millis(row.archived_at):undefined})
+const conversationFrom=(row:ConversationRow):Conversation=>({id:row.id,tenantId:row.tenant_id,userId:row.user_id,status:row.status,title:row.title??undefined,labels:row.labels??[],access:row.access??'owner',createdAt:millis(row.created_at),updatedAt:millis(row.updated_at),archivedAt:row.archived_at?millis(row.archived_at):undefined})
+const conversationMemberFrom=(row:ConversationMemberRow):ConversationMember=>({userId:row.user_id,role:row.role,createdAt:millis(row.created_at)})
 
 export class PostgresConversationStore implements ConversationStore{
   constructor(readonly client:SqlClient){}
@@ -45,7 +47,7 @@ export class PostgresConversationStore implements ConversationStore{
     const result=await this.client.query<ConversationMessageRow>(`WITH owned AS (
       INSERT INTO captra_conversations (tenant_id,id,user_id) VALUES ($1,$2,$3)
       ON CONFLICT (tenant_id,id) DO UPDATE SET updated_at=now()
-      WHERE captra_conversations.user_id=EXCLUDED.user_id AND captra_conversations.status='active'
+      WHERE captra_conversations.status='active' AND (captra_conversations.user_id=EXCLUDED.user_id OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=captra_conversations.tenant_id AND member.conversation_id=captra_conversations.id AND member.user_id=EXCLUDED.user_id AND member.role='editor'))
       RETURNING tenant_id,id,user_id
     ), incoming AS (
       SELECT * FROM jsonb_to_recordset($4::jsonb) AS message(id text,role text,content text,created_at timestamptz)
@@ -56,7 +58,7 @@ export class PostgresConversationStore implements ConversationStore{
     ON CONFLICT (tenant_id,conversation_id,id) DO NOTHING
     RETURNING *`,[identity.tenantId,conversationId,identity.userId,JSON.stringify(rows.map(row=>({id:row.id,role:row.role,content:row.content,created_at:new Date(row.createdAt).toISOString()})))])
     if(!result.rows.length){
-      const owned=await this.client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+      const owned=await this.client.query<ConversationRow>(`SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND (user_id=$3 OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=$1 AND member.conversation_id=$2 AND member.user_id=$3 AND member.role='editor'))`,[identity.tenantId,conversationId,identity.userId])
       if(!owned.rows[0])throw new Error('Conversation not found')
       if(owned.rows[0].status==='archived')throw new Error('Conversation is archived')
     }
@@ -70,25 +72,41 @@ export class PostgresConversationStore implements ConversationStore{
     values.push(limit+1)
     const result=await this.client.query<ConversationMessageRow>(`SELECT messages.* FROM captra_conversation_messages messages
       JOIN captra_conversations conversations ON conversations.tenant_id=messages.tenant_id AND conversations.id=messages.conversation_id
-      WHERE conversations.tenant_id=$1 AND conversations.id=$2 AND conversations.user_id=$3 ${cursor}
+      WHERE conversations.tenant_id=$1 AND conversations.id=$2 AND (conversations.user_id=$3 OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=$1 AND member.conversation_id=$2 AND member.user_id=$3)) ${cursor}
       ORDER BY messages.sequence DESC LIMIT $${values.length}`,values)
     if(!result.rows.length){
-      const conversation=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+      const conversation=await this.client.query(`SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND (user_id=$3 OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=$1 AND member.conversation_id=$2 AND member.user_id=$3))`,[identity.tenantId,conversationId,identity.userId])
       if(!conversation.rows[0]&&await this.exists(identity.tenantId,conversationId))throw new Error('Conversation not found')
     }
     const hasMore=result.rows.length>limit,selected=result.rows.slice(0,limit).reverse().map(conversationMessageFrom)
     return {items:selected,nextCursor:hasMore?selected[0]?.id:undefined}
   }
 
+  async listConversations(identity:ExecutionIdentity,options:{cursor?:string;limit?:number;status?:ConversationStatus}={}){
+    const limit=Math.max(1,Math.min(100,options.limit??30)),values:unknown[]=[identity.tenantId,identity.userId],clauses=[`conversations.tenant_id=$1`,`(conversations.user_id=$2 OR members.user_id=$2)`]
+    if(options.status){values.push(options.status);clauses.push(`conversations.status=$${values.length}`)}
+    if(options.cursor){values.push(options.cursor);clauses.push(`(conversations.updated_at,conversations.id)<(SELECT updated_at,id FROM captra_conversations WHERE tenant_id=$1 AND id=$${values.length})`)}
+    values.push(limit+1);const result=await this.client.query<ConversationRow>(`SELECT conversations.*,CASE WHEN conversations.user_id=$2 THEN 'owner' ELSE members.role END AS access FROM captra_conversations conversations LEFT JOIN captra_conversation_members members ON members.tenant_id=conversations.tenant_id AND members.conversation_id=conversations.id AND members.user_id=$2 WHERE ${clauses.join(' AND ')} ORDER BY conversations.updated_at DESC,conversations.id DESC LIMIT $${values.length}`,values),hasMore=result.rows.length>limit,items=result.rows.slice(0,limit).map(conversationFrom)
+    return {items,nextCursor:hasMore?items.at(-1)?.id:undefined}
+  }
+
   async get(conversationId:string,identity:ExecutionIdentity){
-    const result=await this.client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+    const result=await this.client.query<ConversationRow>(`SELECT conversations.*,CASE WHEN conversations.user_id=$3 THEN 'owner' ELSE members.role END AS access FROM captra_conversations conversations LEFT JOIN captra_conversation_members members ON members.tenant_id=conversations.tenant_id AND members.conversation_id=conversations.id AND members.user_id=$3 WHERE conversations.tenant_id=$1 AND conversations.id=$2 AND (conversations.user_id=$3 OR members.user_id=$3)`,[identity.tenantId,conversationId,identity.userId])
     if(result.rows[0])return conversationFrom(result.rows[0])
     if(await this.exists(identity.tenantId,conversationId))throw new Error('Conversation not found')
     return undefined
   }
 
+  async update(conversationId:string,identity:ExecutionIdentity,patch:{title?:string|null;labels?:readonly string[]}){
+    const result=await this.client.query<ConversationRow>(`UPDATE captra_conversations conversations SET title=CASE WHEN $4::boolean THEN $5 ELSE title END,labels=CASE WHEN $6::boolean THEN $7::jsonb ELSE labels END,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND (user_id=$3 OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=$1 AND member.conversation_id=$2 AND member.user_id=$3 AND member.role='editor')) RETURNING conversations.*,CASE WHEN user_id=$3 THEN 'owner' ELSE 'editor' END AS access`,[identity.tenantId,conversationId,identity.userId,patch.title!==undefined,patch.title??null,patch.labels!==undefined,JSON.stringify([...new Set(patch.labels??[])])]);if(!result.rows[0])throw new Error('Conversation not found');return conversationFrom(result.rows[0])
+  }
+
   async archive(conversationId:string,identity:ExecutionIdentity){return this.transition(conversationId,identity,'archived')}
   async restore(conversationId:string,identity:ExecutionIdentity){return this.transition(conversationId,identity,'active')}
+  async members(conversationId:string,identity:ExecutionIdentity){await this.requireOwner(conversationId,identity);const result=await this.client.query<ConversationMemberRow>('SELECT user_id,role,created_at FROM captra_conversation_members WHERE tenant_id=$1 AND conversation_id=$2 ORDER BY created_at,user_id',[identity.tenantId,conversationId]);return result.rows.map(conversationMemberFrom)}
+  async share(conversationId:string,identity:ExecutionIdentity,userId:string,role:Exclude<ConversationRole,'owner'>){await this.requireOwner(conversationId,identity);if(!userId||userId===identity.userId)throw new Error('Invalid conversation member');const result=await this.client.query<ConversationMemberRow>('INSERT INTO captra_conversation_members (tenant_id,conversation_id,user_id,role) VALUES ($1,$2,$3,$4) ON CONFLICT (tenant_id,conversation_id,user_id) DO UPDATE SET role=EXCLUDED.role RETURNING user_id,role,created_at',[identity.tenantId,conversationId,userId,role]);return conversationMemberFrom(result.rows[0])}
+  async unshare(conversationId:string,identity:ExecutionIdentity,userId:string){await this.requireOwner(conversationId,identity);const result=await this.client.query('DELETE FROM captra_conversation_members WHERE tenant_id=$1 AND conversation_id=$2 AND user_id=$3',[identity.tenantId,conversationId,userId]);return (result.rowCount??0)>0}
+  async transfer(conversationId:string,identity:ExecutionIdentity,newOwnerId:string){if(!newOwnerId||newOwnerId===identity.userId)throw new Error('Invalid conversation owner');const result=await this.client.query<ConversationRow>(`WITH moved AS (UPDATE captra_conversations SET user_id=$4,updated_at=now() WHERE tenant_id=$1 AND id=$2 AND user_id=$3 RETURNING *), old_owner AS (INSERT INTO captra_conversation_members (tenant_id,conversation_id,user_id,role) SELECT tenant_id,id,$3,'editor' FROM moved ON CONFLICT (tenant_id,conversation_id,user_id) DO UPDATE SET role='editor'), removed AS (DELETE FROM captra_conversation_members WHERE tenant_id=$1 AND conversation_id=$2 AND user_id=$4) SELECT moved.*,'editor' AS access FROM moved`,[identity.tenantId,conversationId,identity.userId,newOwnerId]);if(!result.rows[0])throw new Error('Conversation not found');return conversationFrom(result.rows[0])}
   async delete(conversationId:string,identity:ExecutionIdentity){
     const result=await this.client.query('DELETE FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
     if((result.rowCount??0)>0)return true
@@ -115,6 +133,7 @@ export class PostgresConversationStore implements ConversationStore{
   }
 
   private async exists(tenantId:string,conversationId:string){const result=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2',[tenantId,conversationId]);return Boolean(result.rows[0])}
+  private async requireOwner(conversationId:string,identity:ExecutionIdentity){const result=await this.client.query('SELECT 1 FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId]);if(!result.rows[0])throw new Error('Conversation not found')}
 }
 
 export class PostgresRunStore implements RunStore{
@@ -176,14 +195,14 @@ async function appendConversation(client:SqlClient,conversationId:string,identit
   const result=await client.query<ConversationMessageRow>(`WITH owned AS (
     INSERT INTO captra_conversations (tenant_id,id,user_id) VALUES ($1,$2,$3)
     ON CONFLICT (tenant_id,id) DO UPDATE SET updated_at=now()
-    WHERE captra_conversations.user_id=EXCLUDED.user_id AND captra_conversations.status='active'
+    WHERE captra_conversations.status='active' AND (captra_conversations.user_id=EXCLUDED.user_id OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=captra_conversations.tenant_id AND member.conversation_id=captra_conversations.id AND member.user_id=EXCLUDED.user_id AND member.role='editor'))
     RETURNING tenant_id,id,user_id
   ), incoming AS (SELECT * FROM jsonb_to_recordset($4::jsonb) AS message(id text,role text,content text,created_at timestamptz))
   INSERT INTO captra_conversation_messages (tenant_id,conversation_id,id,user_id,role,content,created_at)
   SELECT owned.tenant_id,owned.id,incoming.id,owned.user_id,incoming.role,incoming.content,incoming.created_at FROM owned CROSS JOIN incoming
   ON CONFLICT (tenant_id,conversation_id,id) DO NOTHING RETURNING *`,[identity.tenantId,conversationId,identity.userId,JSON.stringify(rows)])
   if(result.rows.length===messages.length)return
-  const owned=await client.query<ConversationRow>('SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND user_id=$3',[identity.tenantId,conversationId,identity.userId])
+  const owned=await client.query<ConversationRow>(`SELECT * FROM captra_conversations WHERE tenant_id=$1 AND id=$2 AND (user_id=$3 OR EXISTS (SELECT 1 FROM captra_conversation_members member WHERE member.tenant_id=$1 AND member.conversation_id=$2 AND member.user_id=$3 AND member.role='editor'))`,[identity.tenantId,conversationId,identity.userId])
   if(!owned.rows[0])throw new Error('Conversation not found')
   if(owned.rows[0].status==='archived')throw new Error('Conversation is archived')
 }

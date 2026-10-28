@@ -29,6 +29,8 @@ CREATE TABLE IF NOT EXISTS captra_conversations (
   id text NOT NULL,
   user_id text NOT NULL,
   status text NOT NULL DEFAULT 'active' CHECK (status IN ('active','archived')),
+  title text,
+  labels jsonb NOT NULL DEFAULT '[]'::jsonb,
   archived_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -38,8 +40,23 @@ CREATE INDEX IF NOT EXISTS captra_conversations_owner
   ON captra_conversations (tenant_id,user_id,updated_at DESC,id);
 ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'active';
 ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS archived_at timestamptz;
+ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE captra_conversations ADD COLUMN IF NOT EXISTS labels jsonb NOT NULL DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS captra_conversations_retention
   ON captra_conversations (tenant_id,archived_at,id) WHERE status='archived';
+
+CREATE TABLE IF NOT EXISTS captra_conversation_members (
+  tenant_id text NOT NULL,
+  conversation_id text NOT NULL,
+  user_id text NOT NULL,
+  role text NOT NULL CHECK (role IN ('editor','viewer')),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (tenant_id,conversation_id,user_id),
+  FOREIGN KEY (tenant_id,conversation_id)
+    REFERENCES captra_conversations(tenant_id,id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS captra_conversation_members_user
+  ON captra_conversation_members (tenant_id,user_id,conversation_id);
 
 CREATE TABLE IF NOT EXISTS captra_conversation_messages (
   sequence bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

@@ -63,6 +63,13 @@ suite('PostgreSQL integration',()=>{
     expect(await conversations.delete('deleted',owner)).toBe(true);expect(await conversations.delete('deleted',owner)).toBe(false)
   })
 
+  it('lists metadata and enforces shared conversation roles and ownership transfer',async()=>{
+    const conversations=new PostgresConversationStore(client),owner={tenantId:'collab',userId:'owner',projectId:'p1'},editor={...owner,userId:'editor'},viewer={...owner,userId:'viewer'}
+    await conversations.append('shared',owner,[{role:'user',content:'hello'}]);await conversations.update('shared',owner,{title:'Launch',labels:['priority']});await conversations.share('shared',owner,'editor','editor');await conversations.share('shared',owner,'viewer','viewer')
+    expect((await conversations.listConversations(editor)).items[0]).toMatchObject({id:'shared',title:'Launch',access:'editor'});await conversations.append('shared',editor,[{role:'assistant',content:'edited'}]);expect((await conversations.list('shared',viewer)).items).toHaveLength(2);await expect(conversations.append('shared',viewer,[{role:'user',content:'blocked'}])).rejects.toThrow('not found');await expect(conversations.archive('shared',editor)).rejects.toThrow('not found')
+    await conversations.transfer('shared',owner,'editor');expect((await conversations.get('shared',editor))?.access).toBe('owner');expect((await conversations.get('shared',owner))?.access).toBe('editor');expect(await conversations.unshare('shared',editor,'viewer')).toBe(true)
+  })
+
   it('atomically commits assistant messages, usage, completion events, and terminal state',async()=>{
     const identity={tenantId:'atomic',userId:'u1',projectId:'p1'},runs=new PostgresRunStore(client),conversations=new PostgresConversationStore(client),completion=new PostgresRunCompletionStore(database)
     const run=await runs.create({app:'Test',appVersion:'1.0.0',capability:'chat',input:{},identity});await runs.update(run.id,{status:'running'});await conversations.append('c1',identity,[{id:'user-1',role:'user',content:'hello'}]);await conversations.archive('c1',identity)
