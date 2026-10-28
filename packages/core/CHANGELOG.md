@@ -1,5 +1,11 @@
 # @captra-ai/core
 
+## 0.18.0
+
+### Minor Changes
+
+- 3a487b8: Add an explicit run-completion transaction contract and a PostgreSQL implementation that atomically commits durable assistant messages, usage, completion events, and terminal run state. Durable chat now stages deterministic message and usage records for replay-safe completion.
+
 ## 0.17.0
 
 ### Minor Changes

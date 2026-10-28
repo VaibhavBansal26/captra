@@ -8,7 +8,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@captra-ai/core": "0.17.0",
+    "@captra-ai/core": "0.18.0",
     "@captra-ai/react": "0.7.0",
     "@captra-ai/server": "0.11.0",
     "@vitejs/plugin-react": "^5.0.0",
