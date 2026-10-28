@@ -1,5 +1,13 @@
 # captra
 
+## 0.19.3
+
+### Patch Changes
+
+- 60b384e: Publish Devtools as a standalone package and make `captra/devtools` re-export that canonical implementation so conversation and future inspection views cannot drift between entry points.
+- Updated dependencies [60b384e]
+  - @captra-ai/devtools@0.8.1
+
 ## 0.19.2
 
 ### Patch Changes
