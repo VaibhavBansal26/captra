@@ -1,5 +1,11 @@
 # @captra-ai/server
 
+## 0.12.0
+
+### Minor Changes
+
+- 8572913: Add complete conversation lifecycle metadata and collaboration: titles, labels, listing, rename, archive/restore/delete, owner/editor/viewer roles, sharing, ownership transfer, typed client methods, a React lifecycle hook, and a Devtools conversation view.
+
 ## 0.11.0
 
 ### Minor Changes

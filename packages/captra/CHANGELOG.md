@@ -1,5 +1,18 @@
 # captra
 
+## 0.19.2
+
+### Patch Changes
+
+- 8572913: Add complete conversation lifecycle metadata and collaboration: titles, labels, listing, rename, archive/restore/delete, owner/editor/viewer roles, sharing, ownership transfer, typed client methods, a React lifecycle hook, and a Devtools conversation view.
+- Updated dependencies [8572913]
+  - @captra-ai/core@0.19.0
+  - @captra-ai/postgres@0.11.0
+  - @captra-ai/server@0.12.0
+  - @captra-ai/client@0.9.0
+  - @captra-ai/react@0.8.0
+  - @captra-ai/mcp@0.1.6
+
 ## 0.19.1
 
 ### Patch Changes

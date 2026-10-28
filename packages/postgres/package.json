@@ -1,6 +1,6 @@
 {
   "name": "@captra-ai/postgres",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "description": "Durable PostgreSQL conversation, run, memory, queue, and state adapters for Captra.",
   "license": "MIT",
   "repository": {
