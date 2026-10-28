@@ -10,11 +10,11 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Implement append, list, archive, delete, and retention operations.
   - [x] Test tenant isolation, ownership checks, deduplication, and concurrent appends against real PostgreSQL.
   - [x] Document migration, backup, retention, and adapter configuration.
-- [ ] Make chat persistence atomic with run completion.
-  - [ ] Define the transaction boundary between messages, events, usage, and terminal run state.
-  - [ ] Prevent `completed` when the assistant message cannot be persisted.
-  - [ ] Make completion replay-safe with message and effect idempotency keys.
-  - [ ] Add crash-before-write and crash-after-write recovery tests.
+- [x] Make chat persistence atomic with run completion.
+  - [x] Define the transaction boundary between messages, events, usage, and terminal run state.
+  - [x] Prevent `completed` when the assistant message cannot be persisted.
+  - [x] Make completion replay-safe with message and effect idempotency keys.
+  - [x] Add crash-before-write and crash-after-write recovery tests.
 - [ ] Add conversation lifecycle metadata.
   - [ ] Add title, created/updated timestamps, status, owner, and optional labels.
   - [ ] Add list, rename, archive, restore, and delete APIs.
