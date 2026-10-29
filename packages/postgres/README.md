@@ -22,6 +22,8 @@ Always configure `PostgresRunCompletionStore` with durable chat. It uses one che
 
 Conversation IDs are scoped by tenant and bound to the user who creates them. Message IDs are deduplicated and history uses stable backward cursor pagination. All durable memory, shared state, conversations, and effect receipts are tenant-scoped. Run migrations during deployment before starting workers.
 
+History compaction stores summaries in `captra_conversation_summaries`; original message rows remain unchanged. Each summary records its source message IDs, model, prompt version, timestamp, and covered sequence. Backups must include both tables so summarized model context remains reproducible and auditable.
+
 Conversation lifecycle operations are available through the store and authenticated HTTP client:
 
 ```ts

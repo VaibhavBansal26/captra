@@ -14,6 +14,7 @@ export const supportChat = chat({
   instructions: 'Be accurate, concise, and never invent account data.',
   model: createOpenAI({ model: 'gpt-5-mini' }),
   durable: true,
+  compaction: { thresholdTokens: 6_000, retainRecentMessages: 12, promptVersion: 'support-v1' },
   memory: ['user', 'project'],
   budget: { maxTokens: 8_000, maxOutputTokens: 800 },
 })
@@ -22,6 +23,8 @@ export const supportChat = chat({
 The built-in input contract is `{ messages, conversationId? }`. The output is `{ message, conversationId? }`. Providers with a `stream()` implementation emit `chat.delta` events. Providers without streaming still work through `generate()`.
 
 Recalled memory is clearly marked as untrusted context before it reaches the model. The chat capability reserves token and cost capacity before inference, commits actual usage afterward, and releases the reservation when the provider fails.
+
+When durable history crosses `compaction.thresholdTokens`, Captra summarizes older turns and keeps the configured recent window verbatim. Summaries are stored separately with source message IDs, provider model, prompt version, and timestamp. Original messages are never replaced or deleted, so audits retain the complete record. `client.conversationContext(id)` returns bounded model context; `client.conversationSummaries(id)` exposes provenance for inspection.
 
 ## Use it from React
 

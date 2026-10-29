@@ -1,5 +1,5 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ComponentType, type FormEvent, type ReactNode } from 'react'
-import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ChatMessage, type ChatOutput, type Conversation, type ConversationStatus, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra-ai/core'
+import { createRuntime, type AgentApp, type CapabilityInput, type CapabilityName, type CapabilityOutput as CapabilityValue, type CapabilityResult, type CaptraEvent, type ChatMessage, type ChatOutput, type Conversation, type ConversationStatus, type ConversationSummary, type ExecutionIdentity, type RemoteCapabilityResult, type RunRecord, type RuntimeOptions } from '@captra-ai/core'
 import type { CaptraClient } from '@captra-ai/client'
 import { createState, hashStateKey, type CaptraState, type StateKey } from '@captra-ai/state'
 
@@ -76,6 +76,8 @@ export function useConversations<App extends AgentApp>(client:CaptraClient<App>,
   const remove=useCallback(async(id:string)=>{await client.deleteConversation(id);setItems(current=>current.filter(item=>item.id!==id))},[client])
   return {items,loadMore:()=>load(false),refresh,update,archive,restore,remove,pending,error,hasMore:Boolean(cursor)}
 }
+
+export function useConversationSummaries<App extends AgentApp>(client:CaptraClient<App>,conversationId?:string){const [items,setItems]=useState<ConversationSummary[]>([]),[pending,setPending]=useState(false),[error,setError]=useState<string|null>(null);const refresh=useCallback(async()=>{if(!conversationId)return [];setPending(true);setError(null);try{const values=await client.conversationSummaries(conversationId);setItems(values);return values}catch(caught){setError(caught instanceof Error?caught.message:'Unable to load conversation summaries');return []}finally{setPending(false)}},[client,conversationId]);useEffect(()=>{void refresh()},[refresh]);return {items,refresh,pending,error}}
 
 export type UseChatOptions={conversationId?:string;durable?:boolean;pageSize?:number;initialMessages?:readonly ChatMessage[];idempotencyKey?:()=>string;reconnectIntervalMs?:number}
 export function useChat<App extends AgentApp,Name extends CapabilityName<App>>(client:CaptraClient<App>,capability:Name,options:UseChatOptions={}){

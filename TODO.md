@@ -20,11 +20,11 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Add list, rename, archive, restore, and delete APIs.
   - [x] Define ownership transfer and shared-conversation authorization policies.
   - [x] Add client methods, React hooks, and Devtools views.
-- [ ] Add history compaction and summarization.
-  - [ ] Define token-aware selection and compaction thresholds.
-  - [ ] Store summaries separately from original messages.
-  - [ ] Record source message IDs, model, prompt version, and timestamp as provenance.
-  - [ ] Test that retrieval remains bounded and original history remains auditable.
+- [x] Add history compaction and summarization.
+  - [x] Define token-aware selection and compaction thresholds.
+  - [x] Store summaries separately from original messages.
+  - [x] Record source message IDs, model, prompt version, and timestamp as provenance.
+  - [x] Test that retrieval remains bounded and original history remains auditable.
 - [ ] Complete recovery and race-condition coverage.
   - [ ] Test cancellation during model, tool, approval, and persistence phases.
   - [ ] Test worker retries, reconnects, duplicate queue delivery, and concurrent approvals.

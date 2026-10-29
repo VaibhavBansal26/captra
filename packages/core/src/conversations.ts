@@ -8,11 +8,17 @@ export type ConversationMember={userId:string;role:Exclude<ConversationRole,'own
 export type ConversationMessage=ChatMessage&{id:string;conversationId:string;tenantId:string;userId:string;createdAt:number}
 export type ConversationPage={items:ConversationMessage[];nextCursor?:string}
 export type ConversationListPage={items:Conversation[];nextCursor?:string}
+export type ConversationSummary={id:string;conversationId:string;tenantId:string;content:string;sourceMessageIds:readonly string[];model:string;promptVersion:string;createdAt:number}
+export type ConversationContext={summary?:ConversationSummary;messages:ConversationMessage[]}
+export type ConversationSummaryInput={id?:string;content:string;sourceMessageIds:readonly string[];model:string;promptVersion:string;createdAt?:number}
 export interface ConversationStore{
   append(conversationId:string,identity:ExecutionIdentity,messages:readonly ChatMessage[]):Promise<ConversationMessage[]>
   list(conversationId:string,identity:ExecutionIdentity,options?:{cursor?:string;limit?:number}):Promise<ConversationPage>
   listConversations(identity:ExecutionIdentity,options?:{cursor?:string;limit?:number;status?:ConversationStatus}):Promise<ConversationListPage>
   get(conversationId:string,identity:ExecutionIdentity):Promise<Conversation|undefined>
+  context(conversationId:string,identity:ExecutionIdentity,options?:{limit?:number}):Promise<ConversationContext>
+  summaries(conversationId:string,identity:ExecutionIdentity):Promise<ConversationSummary[]>
+  saveSummary(conversationId:string,identity:ExecutionIdentity,input:ConversationSummaryInput):Promise<ConversationSummary>
   update(conversationId:string,identity:ExecutionIdentity,patch:{title?:string|null;labels?:readonly string[]}):Promise<Conversation>
   archive(conversationId:string,identity:ExecutionIdentity):Promise<Conversation>
   restore(conversationId:string,identity:ExecutionIdentity):Promise<Conversation>
@@ -27,6 +33,7 @@ export class InMemoryConversationStore implements ConversationStore{
   readonly #messages=new Map<string,ConversationMessage[]>()
   readonly #conversations=new Map<string,Conversation>()
   readonly #members=new Map<string,Map<string,ConversationMember>>()
+  readonly #summaries=new Map<string,ConversationSummary[]>()
 
   async append(conversationId:string,identity:ExecutionIdentity,messages:readonly ChatMessage[]){
     if(!messages.length)return []
@@ -58,6 +65,13 @@ export class InMemoryConversationStore implements ConversationStore{
     return structuredClone({items,nextCursor:start+limit<visible.length?items.at(-1)?.id:undefined})
   }
 
+  async context(conversationId:string,identity:ExecutionIdentity,options:{limit?:number}={}){
+    await this.get(conversationId,identity);const key=scope(identity.tenantId,conversationId),all=this.#messages.get(key)??[],summary=this.#summaries.get(key)?.at(-1),through=summary?all.findIndex(item=>item.id===summary.sourceMessageIds.at(-1)):-1,limit=Math.max(1,Math.min(100,options.limit??30)),messages=all.slice(Math.max(through+1,all.length-limit))
+    return structuredClone({summary,messages})
+  }
+  async summaries(conversationId:string,identity:ExecutionIdentity){await this.get(conversationId,identity);return structuredClone(this.#summaries.get(scope(identity.tenantId,conversationId))??[])}
+  async saveSummary(conversationId:string,identity:ExecutionIdentity,input:ConversationSummaryInput){const key=scope(identity.tenantId,conversationId);await this.get(conversationId,identity);if(!this.#canWrite(key,identity.userId))throw new Error('Conversation not found');if(!input.content||!input.sourceMessageIds.length||!input.model||!input.promptVersion)throw new Error('Invalid conversation summary');const ids=new Set((this.#messages.get(key)??[]).map(item=>item.id));if(input.sourceMessageIds.some(id=>!ids.has(id)))throw new Error('Invalid conversation summary sources');const summary={id:input.id??crypto.randomUUID(),conversationId,tenantId:identity.tenantId,content:input.content,sourceMessageIds:[...input.sourceMessageIds],model:input.model,promptVersion:input.promptVersion,createdAt:input.createdAt??Date.now()};const values=this.#summaries.get(key)??[];if(!values.some(item=>item.id===summary.id))values.push(summary);this.#summaries.set(key,values);return structuredClone(summary)}
+
   async get(conversationId:string,identity:ExecutionIdentity){
     const conversation=this.#conversations.get(scope(identity.tenantId,conversationId))
     if(conversation&&conversation.userId!==identity.userId&&!this.#members.get(scope(identity.tenantId,conversationId))?.has(identity.userId))throw new Error('Conversation not found')
@@ -79,7 +93,7 @@ export class InMemoryConversationStore implements ConversationStore{
   async delete(conversationId:string,identity:ExecutionIdentity){
     const conversation=await this.get(conversationId,identity)
     if(!conversation)return false
-    this.#owner(conversation,identity);const key=scope(identity.tenantId,conversationId);this.#messages.delete(key);this.#members.delete(key);return this.#conversations.delete(key)
+    this.#owner(conversation,identity);const key=scope(identity.tenantId,conversationId);this.#messages.delete(key);this.#members.delete(key);this.#summaries.delete(key);return this.#conversations.delete(key)
   }
 
   async #transition(conversationId:string,identity:ExecutionIdentity,status:ConversationStatus){

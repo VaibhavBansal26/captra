@@ -1,4 +1,4 @@
-import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type Conversation, type ConversationListPage, type ConversationMember, type ConversationPage, type ConversationStatus, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
+import { CAPTRA_PROTOCOL_VERSION, type AgentApp, type CaptraEvent, type CapabilityInput, type CapabilityName, type CapabilityOutput, type Conversation, type ConversationContext, type ConversationListPage, type ConversationMember, type ConversationPage, type ConversationStatus, type ConversationSummary, type RemoteCapabilityResult, type RunRecord, type UsageGroupBy, type UsageQuery, type UsageRecord, type UsageSummary } from '@captra-ai/core'
 
 export type CaptraClientOptions={baseUrl:string;headers?:HeadersInit;fetch?:typeof fetch}
 export type RemoteResultFor<App extends AgentApp,Name extends CapabilityName<App>>=RemoteCapabilityResult<CapabilityOutput<App,Name>>&{capability:RemoteCapabilityResult['capability']&{name:Name}}
@@ -15,6 +15,8 @@ export function createCaptraClient<App extends AgentApp=AgentApp>(options:Captra
     run:(id:string)=>call(`/runs/${encodeURIComponent(id)}`) as Promise<RunRecord>,
     events:(id:string,after=0)=>call(`/runs/${encodeURIComponent(id)}/events?after=${after}`) as Promise<CaptraEvent[]>,
     conversationMessages:(id:string,options:{cursor?:string;limit?:number}={})=>call(`/conversations/${encodeURIComponent(id)}/messages?${usageParams(options)}`) as Promise<ConversationPage>,
+    conversationContext:(id:string,limit=30)=>call(`/conversations/${encodeURIComponent(id)}/context?limit=${limit}`) as Promise<ConversationContext>,
+    conversationSummaries:(id:string)=>call(`/conversations/${encodeURIComponent(id)}/summaries`) as Promise<ConversationSummary[]>,
     conversations:(options:{cursor?:string;limit?:number;status?:ConversationStatus}={})=>call(`/conversations?${usageParams(options)}`) as Promise<ConversationListPage>,
     conversation:(id:string)=>call(`/conversations/${encodeURIComponent(id)}`) as Promise<Conversation>,
     updateConversation:(id:string,patch:{title?:string|null;labels?:readonly string[]})=>call(`/conversations/${encodeURIComponent(id)}`,{method:'PATCH',body:JSON.stringify(patch)}) as Promise<Conversation>,

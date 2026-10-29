@@ -74,6 +74,21 @@ CREATE TABLE IF NOT EXISTS captra_conversation_messages (
 CREATE INDEX IF NOT EXISTS captra_conversation_messages_page
   ON captra_conversation_messages (tenant_id,conversation_id,sequence DESC);
 
+CREATE TABLE IF NOT EXISTS captra_conversation_summaries (
+  id uuid PRIMARY KEY,
+  tenant_id text NOT NULL,
+  conversation_id text NOT NULL,
+  content text NOT NULL,
+  source_message_ids jsonb NOT NULL,
+  through_sequence bigint NOT NULL,
+  model text NOT NULL,
+  prompt_version text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  FOREIGN KEY (tenant_id,conversation_id) REFERENCES captra_conversations(tenant_id,id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS captra_conversation_summaries_latest
+  ON captra_conversation_summaries (tenant_id,conversation_id,through_sequence DESC,created_at DESC);
+
 CREATE TABLE IF NOT EXISTS captra_events (
   id uuid PRIMARY KEY,
   run_id uuid NOT NULL REFERENCES captra_runs(id) ON DELETE CASCADE,

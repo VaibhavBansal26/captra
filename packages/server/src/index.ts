@@ -39,6 +39,10 @@ export function createCaptraHandler(runtime:Runtime,options:CaptraHandlerOptions
       if(request.method==='GET'&&route==='/conversations'){const url=new URL(request.url),limit=pageLimit(url);const status=url.searchParams.get('status');if(status&&status!=='active'&&status!=='archived')throw new CaptraHttpError(400,'invalid_conversation_status','Conversation status must be active or archived');return decorate(json(await runtime.conversations.listConversations(identity,{cursor:url.searchParams.get('cursor')??undefined,limit,status:status as 'active'|'archived'|undefined})),requestId,origin,options.cors)}
       const conversation=route.match(/^\/conversations\/([^/]+)\/messages$/)
       if(request.method==='GET'&&conversation){const url=new URL(request.url);return decorate(json(await runtime.conversations.list(decodeURIComponent(conversation[1]),identity,{cursor:url.searchParams.get('cursor')??undefined,limit:pageLimit(url)})),requestId,origin,options.cors)}
+      const conversationContext=route.match(/^\/conversations\/([^/]+)\/context$/)
+      if(request.method==='GET'&&conversationContext){const url=new URL(request.url);return decorate(json(await runtime.conversations.context(decodeURIComponent(conversationContext[1]),identity,{limit:pageLimit(url)})),requestId,origin,options.cors)}
+      const conversationSummaries=route.match(/^\/conversations\/([^/]+)\/summaries$/)
+      if(request.method==='GET'&&conversationSummaries)return decorate(json(await runtime.conversations.summaries(decodeURIComponent(conversationSummaries[1]),identity)),requestId,origin,options.cors)
       const memberRecord=route.match(/^\/conversations\/([^/]+)\/members\/([^/]+)$/)
       if(request.method==='DELETE'&&memberRecord){await runtime.conversations.unshare(decodeURIComponent(memberRecord[1]),identity,decodeURIComponent(memberRecord[2]));return decorate(new Response(null,{status:204}),requestId,origin,options.cors)}
       const members=route.match(/^\/conversations\/([^/]+)\/members$/)

@@ -47,6 +47,7 @@ suite('PostgreSQL integration',()=>{
     await expect(conversations.append('c1',grace,[{role:'user',content:'intrusion'}])).rejects.toThrow('Conversation not found')
     expect(await conversations.list('c1',{...ada,tenantId:'other'})).toEqual({items:[],nextCursor:undefined})
   })
+  it('stores summary provenance separately and returns bounded compacted context',async()=>{const conversations=new PostgresConversationStore(client),identity={tenantId:'summary',userId:'ada',projectId:'p1'};await conversations.append('c1',identity,Array.from({length:6},(_,index)=>({id:`m${index}`,role:index%2?'assistant' as const:'user' as const,content:`message ${index}`})));const summary=await conversations.saveSummary('c1',identity,{content:'Earlier discussion',sourceMessageIds:['m0','m1','m2','m3'],model:'test-small',promptVersion:'summary-v1'});expect(summary).toMatchObject({model:'test-small',sourceMessageIds:['m0','m1','m2','m3']});expect(await conversations.context('c1',identity,{limit:1})).toMatchObject({summary:{id:summary.id},messages:[{id:'m5'}]});expect((await conversations.list('c1',identity,{limit:100})).items).toHaveLength(6)})
 
   it('archives, restores, deletes, and purges conversations inside the owning tenant',async()=>{
     const conversations=new PostgresConversationStore(client),owner={tenantId:'lifecycle',userId:'u1',projectId:'p1'}
