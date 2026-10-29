@@ -1,5 +1,19 @@
 # captra
 
+## 0.19.4
+
+### Patch Changes
+
+- 6dbb054: Add token-aware durable conversation compaction with separately stored summaries, complete source/model/prompt provenance, bounded context retrieval, authenticated APIs, React access, and Devtools inspection while preserving original messages for audit.
+- Updated dependencies [6dbb054]
+  - @captra-ai/core@0.20.0
+  - @captra-ai/postgres@0.12.0
+  - @captra-ai/server@0.13.0
+  - @captra-ai/client@0.10.0
+  - @captra-ai/react@0.9.0
+  - @captra-ai/devtools@0.9.0
+  - @captra-ai/mcp@0.1.7
+
 ## 0.19.3
 
 ### Patch Changes
