@@ -1,16 +1,36 @@
 {
   "name": "@captra-ai/gemini",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Google Gemini model adapter for Captra.",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/VaibhavBansal26/captra.git", "directory": "packages/gemini" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VaibhavBansal26/captra.git",
+    "directory": "packages/gemini"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
-  "files": ["dist"],
-  "publishConfig": { "access": "public" },
-  "peerDependencies": { "@captra-ai/core": ">=0.21.0 <1" },
-  "devDependencies": { "vitest": "^4.1.12" },
-  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run" }
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@captra-ai/core": ">=0.21.0 <1"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.12"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  }
 }

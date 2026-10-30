@@ -1,5 +1,11 @@
 # create-captra
 
+## 0.5.10
+
+### Patch Changes
+
+- Publish the new Anthropic and Gemini provider adapters and the updated project generator.
+
 ## 0.5.9
 
 ### Patch Changes
