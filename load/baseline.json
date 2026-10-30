@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "profile": "ci",
+  "generatedAt": "2026-10-30T06:15:08.904Z",
+  "environment": {
+    "runner": "GitHub Actions ubuntu-latest",
+    "node": "v20.20.2",
+    "postgres": "pgvector/pgvector:pg16",
+    "databasePoolSize": 4
+  },
+  "metrics": [
+    {
+      "name": "concurrent-runs",
+      "count": 40,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 6.39,
+      "throughput": 6258.37,
+      "latency": { "p50Ms": 6.04, "p95Ms": 6.25, "p99Ms": 6.36, "maxMs": 6.36 }
+    },
+    {
+      "name": "sse-clients",
+      "count": 24,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 11.5,
+      "throughput": 2086.52,
+      "latency": { "p50Ms": 8.52, "p95Ms": 9.75, "p99Ms": 11.49, "maxMs": 11.49 }
+    },
+    {
+      "name": "queue-workers",
+      "count": 40,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 2.37,
+      "throughput": 16903.18,
+      "latency": { "p50Ms": 2.06, "p95Ms": 2.19, "p99Ms": 2.35, "maxMs": 2.35 }
+    },
+    {
+      "name": "reconnect-storm",
+      "count": 48,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 4.86,
+      "throughput": 9874.24,
+      "latency": { "p50Ms": 4.26, "p95Ms": 4.62, "p99Ms": 4.83, "maxMs": 4.83 }
+    },
+    {
+      "name": "postgres-runs",
+      "count": 24,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 36.96,
+      "throughput": 649.41,
+      "latency": { "p50Ms": 33.54, "p95Ms": 36.43, "p99Ms": 36.51, "maxMs": 36.51 }
+    },
+    {
+      "name": "pgvector-search",
+      "count": 24,
+      "errors": 0,
+      "errorRate": 0,
+      "durationMs": 8.78,
+      "throughput": 2732.26,
+      "latency": { "p50Ms": 4.21, "p95Ms": 6.73, "p99Ms": 8.36, "maxMs": 8.36 }
+    }
+  ],
+  "recoveryMs": 20.73,
+  "maxEventBacklog": 4,
+  "maxPoolWaiters": 20,
+  "heapGrowthMb": 5.15,
+  "passed": true,
+  "source": "https://github.com/VaibhavBansal26/captra/actions/runs/41012858282"
+}

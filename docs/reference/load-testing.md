@@ -21,7 +21,7 @@ CAPTRA_POSTGRES_URL=postgresql://captra:captra@localhost:5432/captra_test \
 The command prints a versioned JSON report and exits non-zero when a target is missed. Redirect that output to retain a machine-specific baseline:
 
 ```bash
-npm run load:baseline > load-report.json
+npm run --silent load:baseline > load-report.json
 ```
 
 ## Covered paths
