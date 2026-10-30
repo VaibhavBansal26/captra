@@ -1,5 +1,11 @@
 # captra
 
+## 0.19.6
+
+### Patch Changes
+
+- 44c1827: Add reproducible production load suites for concurrent runs, SSE, queues, workers, PostgreSQL, pgvector, reconnect recovery, pool pressure, event backlog, and heap growth.
+
 ## 0.19.5
 
 ### Patch Changes

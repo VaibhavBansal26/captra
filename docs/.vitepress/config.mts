@@ -21,7 +21,7 @@ export default defineConfig({
       {text:'Reference',link:'/reference/capabilities'},
       {text:'Integrations',link:'/integrations'},
       {text:'Roadmap',link:'/roadmap'},
-      {text:'0.19.5',items:[
+      {text:'0.19.6',items:[
         {text:'Changelog',link:'https://github.com/VaibhavBansal26/captra/releases'},
         {text:'npm',link:'https://www.npmjs.com/package/captra'},
       ]},
