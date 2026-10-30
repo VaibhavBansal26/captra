@@ -174,6 +174,18 @@ const model=createOpenAI({model:'gpt-5.4'})
 The adapter supports function calls, response continuation, usage accounting, streaming, cancellation, and bounded retries for rate limits and transient server errors.
 Create it only in trusted server code; never expose `OPENAI_API_KEY` in a browser bundle.
 
+Anthropic and Gemini use the same provider-neutral contract:
+
+```ts
+import { createAnthropic } from 'captra/anthropic'
+import { createGemini } from 'captra/gemini'
+
+const anthropic=createAnthropic({model:'claude-sonnet-5'})
+const gemini=createGemini({model:'gemini-3.8-flash'})
+```
+
+Use `ANTHROPIC_API_KEY` or `GEMINI_API_KEY` only in trusted server code. All official adapters support streaming, tools, structured output, usage, cancellation, and normalized fallback errors.
+
 Adaptive memory wraps any memory store, including PostgreSQL:
 
 ```ts

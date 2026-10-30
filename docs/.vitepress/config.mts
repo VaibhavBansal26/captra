@@ -39,6 +39,7 @@ export default defineConfig({
           {text:'State & memory',link:'/state-and-memory'},
           {text:'Runtime & durability',link:'/reference/runtime'},
           {text:'Token & cost budgets',link:'/reference/budgets'},
+          {text:'Model providers',link:'/reference/providers'},
           {text:'Devtools',link:'/reference/devtools'},
           {text:'Replay & evaluations',link:'/reference/evaluations'},
           {text:'Model Context Protocol',link:'/reference/mcp'},

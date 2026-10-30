@@ -48,6 +48,14 @@
       "types": "./dist/openai.d.ts",
       "import": "./dist/openai.js"
     },
+    "./anthropic": {
+      "types": "./dist/anthropic.d.ts",
+      "import": "./dist/anthropic.js"
+    },
+    "./gemini": {
+      "types": "./dist/gemini.d.ts",
+      "import": "./dist/gemini.js"
+    },
     "./mcp": {
       "types": "./dist/mcp.d.ts",
       "import": "./dist/mcp.js"
@@ -71,6 +79,8 @@
     "@captra-ai/core": "^0.21.0",
     "@captra-ai/devtools": "^0.9.0",
     "@captra-ai/openai": "^0.6.0",
+    "@captra-ai/anthropic": "^0.1.0",
+    "@captra-ai/gemini": "^0.1.0",
     "@captra-ai/mcp": "^0.1.8",
     "@captra-ai/postgres": "^0.12.0",
     "@captra-ai/react": "^0.9.0",

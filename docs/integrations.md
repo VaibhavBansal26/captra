@@ -47,6 +47,19 @@ A model adapter should translate `ModelRequest.output` into its provider's nativ
 
 ## Provider fallback
 
+Captra ships official OpenAI, Anthropic, and Gemini adapters:
+
+```ts
+import { createModelFallback } from 'captra'
+import { createOpenAI } from 'captra/openai'
+import { createAnthropic } from 'captra/anthropic'
+import { createGemini } from 'captra/gemini'
+
+const openai=createOpenAI({model:process.env.OPENAI_MODEL??'gpt-5-mini'})
+const anthropic=createAnthropic({model:process.env.ANTHROPIC_MODEL??'claude-sonnet-5'})
+const gemini=createGemini({model:process.env.GEMINI_MODEL??'gemini-3.8-flash'})
+```
+
 Compose provider-neutral adapters with deterministic fallback policy:
 
 ```ts
@@ -77,4 +90,4 @@ See the [MCP reference](/reference/mcp) for authenticated HTTP setup and lifecyc
 
 ## Planned official integrations
 
-The next integration milestone prioritizes additional model providers, authentication adapters, PostgreSQL platforms, observability exporters, and common SaaS tools. See the [roadmap](/roadmap).
+The next integration milestones prioritize authentication adapters, PostgreSQL platforms, observability exporters, and common SaaS tools. See the [roadmap](/roadmap).

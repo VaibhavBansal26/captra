@@ -38,11 +38,11 @@ This checklist tracks the work between the current developer preview and a credi
 
 ## P1 — Model and chat experience
 
-- [ ] Ship official Anthropic and Gemini provider packages.
-  - [ ] Implement model invocation, streaming, tools, structured output, usage, and abort handling.
-  - [ ] Normalize provider errors into Captra error classes.
-  - [ ] Add environment setup, examples, package READMEs, and release verification.
-  - [ ] Add both providers to the fallback-chain documentation and starter options.
+- [x] Ship official Anthropic and Gemini provider packages.
+  - [x] Implement model invocation, streaming, tools, structured output, usage, and abort handling.
+  - [x] Normalize provider errors into Captra error classes.
+  - [x] Add environment setup, examples, package READMEs, and release verification.
+  - [x] Add both providers to the fallback-chain documentation and starter options.
 - [ ] Complete a cross-provider conformance suite.
   - [ ] Define fixtures for text, tools, schemas, streaming, cancellation, usage, and failures.
   - [ ] Run the same contract against OpenAI, Anthropic, Gemini, and test doubles.

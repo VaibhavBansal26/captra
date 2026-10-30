@@ -25,5 +25,7 @@ For the planned stability milestones, see the [roadmap](/roadmap).
 | `captra/server/express` | Express middleware |
 | `captra/postgres` | Durable storage, queues, vectors, and shared state |
 | `captra/openai` | OpenAI model and embedding adapters |
+| `captra/anthropic` | Anthropic Messages API adapter |
+| `captra/gemini` | Google Gemini adapter |
 
 These explicit entry points prevent server-only dependencies and credentials from entering browser bundles.
