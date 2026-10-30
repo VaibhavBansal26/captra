@@ -1,5 +1,11 @@
 # captra
 
+## 0.20.0
+
+### Minor Changes
+
+- 18e2a1d: Add official Anthropic and Gemini model providers with streaming, tools, native structured output, usage, cancellation, normalized errors, fallback documentation, secret scanning, and starter selection.
+
 ## 0.19.6
 
 ### Patch Changes

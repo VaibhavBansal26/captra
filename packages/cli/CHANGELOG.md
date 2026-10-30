@@ -1,5 +1,11 @@
 # @captra-ai/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- 18e2a1d: Add official Anthropic and Gemini model providers with streaming, tools, native structured output, usage, cancellation, normalized errors, fallback documentation, secret scanning, and starter selection.
+
 ## 0.7.9
 
 ### Patch Changes
