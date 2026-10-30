@@ -21,7 +21,7 @@ export default defineConfig({
       {text:'Reference',link:'/reference/capabilities'},
       {text:'Integrations',link:'/integrations'},
       {text:'Roadmap',link:'/roadmap'},
-      {text:'0.15.0',items:[
+      {text:'0.19.5',items:[
         {text:'Changelog',link:'https://github.com/VaibhavBansal26/captra/releases'},
         {text:'npm',link:'https://www.npmjs.com/package/captra'},
       ]},
@@ -47,6 +47,7 @@ export default defineConfig({
         ]},
         {text:'Build and ship',items:[
           {text:'Backend & deployment',link:'/deployment'},
+          {text:'Production load testing',link:'/reference/load-testing'},
           {text:'Security',link:'/security'},
           {text:'Upgrades & migrations',link:'/migrations'},
           {text:'Integrations',link:'/integrations'},

@@ -24,6 +24,8 @@
     "check:packages": "node scripts/verify-packages.mjs",
     "check:scaffold": "node scripts/verify-scaffold.mjs",
     "check:public-release": "node scripts/verify-public-release.mjs",
+    "load:ci": "node scripts/load/run.mjs --profile ci",
+    "load:baseline": "node scripts/load/run.mjs --profile baseline",
     "changeset": "changeset",
     "version-packages": "changeset version",
     "release": "npm run build:packages && changeset publish",

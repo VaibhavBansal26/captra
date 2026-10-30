@@ -30,11 +30,11 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Test worker retries, reconnects, duplicate queue delivery, and concurrent approvals.
   - [x] Verify compare-and-set terminal transitions under contention.
   - [x] Add deterministic fault injection to CI.
-- [ ] Add production load suites.
-  - [ ] Define latency, throughput, error-rate, and recovery targets.
-  - [ ] Cover concurrent runs, SSE clients, queues, workers, PostgreSQL, and vector search.
-  - [ ] Measure database pool pressure, memory growth, event backlog, and reconnect storms.
-  - [ ] Publish reproducible scripts and baseline results.
+- [x] Add production load suites.
+  - [x] Define latency, throughput, error-rate, and recovery targets.
+  - [x] Cover concurrent runs, SSE clients, queues, workers, PostgreSQL, and vector search.
+  - [x] Measure database pool pressure, memory growth, event backlog, and reconnect storms.
+  - [x] Publish reproducible scripts and baseline results.
 
 ## P1 — Model and chat experience
 
