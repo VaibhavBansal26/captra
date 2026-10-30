@@ -10,7 +10,7 @@
     "eval": "captra eval"
   },
   "dependencies": {
-    "captra": "^0.19.4",
+    "captra": "^0.19.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zod": "^4.0.0"

@@ -1,5 +1,14 @@
 # captra
 
+## 0.19.5
+
+### Patch Changes
+
+- bafe68d: Add deterministic named fault injection and comprehensive recovery/race coverage for cancellation phases, worker retries, duplicate resumes, approval races, and terminal compare-and-set contention.
+- Updated dependencies [bafe68d]
+  - @captra-ai/core@0.21.0
+  - @captra-ai/mcp@0.1.8
+
 ## 0.19.4
 
 ### Patch Changes

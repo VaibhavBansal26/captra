@@ -1,5 +1,11 @@
 # @captra-ai/core
 
+## 0.21.0
+
+### Minor Changes
+
+- bafe68d: Add deterministic named fault injection and comprehensive recovery/race coverage for cancellation phases, worker retries, duplicate resumes, approval races, and terminal compare-and-set contention.
+
 ## 0.20.0
 
 ### Minor Changes
