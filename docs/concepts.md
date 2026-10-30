@@ -33,3 +33,13 @@ The execution engine. It validates contracts, authorizes permissions, recalls me
 ## View
 
 A transport-safe component name resolved against an explicit local UI registry. The server chooses an allowed view identifier; the client owns the actual component implementation.
+## Deterministic fault injection
+
+`DeterministicFaultInjector` schedules failures by named checkpoint and occurrence without timers or randomness. Use it in integration tests to reproduce worker crashes, lost responses, and persistence boundaries exactly:
+
+```ts
+const faults = new DeterministicFaultInjector({ 'worker.execute': [1, 3] })
+faults.checkpoint('worker.execute')
+```
+
+Captra CI covers cancellation during model, tool, approval, and persistence phases; worker retry and duplicate delivery; reconnects; concurrent approvals; and compare-and-set terminal races against PostgreSQL.

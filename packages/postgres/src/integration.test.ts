@@ -105,6 +105,7 @@ suite('PostgreSQL integration',()=>{
     expect(await other.read(key)).toMatchObject({value:undefined,version:0})
     const history=await acme.history(key);expect(history.filter(event=>event.type==='state.committed')).toHaveLength(1);expect(history.filter(event=>event.type==='state.conflict')).toHaveLength(7)
   })
+  it('allows only one terminal run transition under database contention',async()=>{const runs=new PostgresRunStore(client),identity={tenantId:'run-race',userId:'u1',projectId:'p1'},run=await runs.create({app:'Race',appVersion:'1',capability:'work',input:{},identity});await runs.update(run.id,{status:'running'});const outcomes=await Promise.all([runs.compareAndSet(run.id,['running'],{status:'completed'}),runs.compareAndSet(run.id,['running'],{status:'cancelled'})]);expect(outcomes.filter(Boolean)).toHaveLength(1);expect((await runs.get(run.id))?.status).toMatch(/completed|cancelled/)})
 
   it('fences an expired lease after another agent takes ownership',async()=>{
     const state=new PostgresSharedStateAdapter(client,'lease-state'),key=['order','o1'],expired=await state.acquire(key,{owner:'agent-old',ttlMs:20})

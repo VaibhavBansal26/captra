@@ -25,11 +25,11 @@ This checklist tracks the work between the current developer preview and a credi
   - [x] Store summaries separately from original messages.
   - [x] Record source message IDs, model, prompt version, and timestamp as provenance.
   - [x] Test that retrieval remains bounded and original history remains auditable.
-- [ ] Complete recovery and race-condition coverage.
-  - [ ] Test cancellation during model, tool, approval, and persistence phases.
-  - [ ] Test worker retries, reconnects, duplicate queue delivery, and concurrent approvals.
-  - [ ] Verify compare-and-set terminal transitions under contention.
-  - [ ] Add deterministic fault injection to CI.
+- [x] Complete recovery and race-condition coverage.
+  - [x] Test cancellation during model, tool, approval, and persistence phases.
+  - [x] Test worker retries, reconnects, duplicate queue delivery, and concurrent approvals.
+  - [x] Verify compare-and-set terminal transitions under contention.
+  - [x] Add deterministic fault injection to CI.
 - [ ] Add production load suites.
   - [ ] Define latency, throughput, error-rate, and recovery targets.
   - [ ] Cover concurrent runs, SSE clients, queues, workers, PostgreSQL, and vector search.
